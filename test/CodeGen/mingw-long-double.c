@@ -45,3 +45,21 @@ long double _Complex TestLDC(long double _Complex x) {
 // GNU32: declare dso_local void @__mulxc3
 // GNU64: declare dso_local void @__mulxc3
 // MSC64: declare dso_local void @__muldc3
+
+long double TestLDVA(long double x, ...) {
+  __builtin_va_list ap;
+  __builtin_va_start(ap, x);
+  long double y = __builtin_va_arg(ap, long double);
+  __builtin_va_end(ap);
+  return x * y;
+}
+// GNU32-LABEL: define dso_local x86_fp80 @TestLDVA(x86_fp80 %x, ...)
+// GNU64-LABEL: define dso_local void @TestLDVA(x86_fp80* noalias sret %agg.result, x86_fp80*, ...)
+// GNU64: %[[AP:.*]] = alloca i8*
+// GNU64: call void @llvm.va_start
+// GNU64: %[[AP_CUR:.*]] = load i8*, i8** %[[AP]]
+// GNU64-NEXT: %[[AP_NEXT:.*]] = getelementptr inbounds i8, i8* %[[AP_CUR]], i64 8
+// GNU64-NEXT: store i8* %[[AP_NEXT]], i8** %[[AP]]
+// GNU64-NEXT: %[[CUR:.*]] = bitcast i8* %[[AP_CUR]] to x86_fp80**
+// GNU64-NEXT: load x86_fp80*, x86_fp80** %[[CUR]]
+// MSC64-LABEL: define dso_local double @TestLDVA(double %x, ...)

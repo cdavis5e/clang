@@ -2089,6 +2089,15 @@ class X86_64ABIInfo : public SwiftABIInfo {
   void classify(QualType T, uint64_t OffsetBase, Class &Lo, Class &Hi,
                 bool isNamedArg) const;
 
+  ABIArgInfo classifyWin64(QualType Ty, unsigned &FreeSSERegs,
+                           bool IsReturnType, bool IsVectorCall,
+                           bool IsRegCall) const;
+  ABIArgInfo reclassifyHvaArgType(QualType Ty, unsigned &FreeSSERegs,
+                                      const ABIArgInfo &current) const;
+  void computeVectorCallArgs(CGFunctionInfo &FI, unsigned FreeSSERegs,
+                             bool IsVectorCall, bool IsRegCall) const;
+  void computeInfoWin64(CGFunctionInfo &FI) const;
+
   llvm::Type *GetByteVectorType(QualType Ty) const;
   llvm::Type *GetSSETypeAtOffset(llvm::Type *IRType,
                                  unsigned IROffset, QualType SourceTy,
@@ -2152,10 +2161,15 @@ class X86_64ABIInfo : public SwiftABIInfo {
   // 64-bit hardware.
   bool Has64BitPointers;
 
+  bool IsWin64;
+  bool IsMingw64;
+
 public:
   X86_64ABIInfo(CodeGen::CodeGenTypes &CGT, X86AVXABILevel AVXLevel) :
       SwiftABIInfo(CGT), AVXLevel(AVXLevel),
-      Has64BitPointers(CGT.getDataLayout().getPointerSize(0) == 8) {
+      Has64BitPointers(CGT.getDataLayout().getPointerSize(0) == 8),
+      IsWin64(getTarget().getTriple().isOSWindows()),
+      IsMingw64(getTarget().getTriple().isWindowsGNUEnvironment()) {
   }
 
   bool isPassedUsingAVXType(QualType type) const {
@@ -2182,27 +2196,6 @@ public:
     return Has64BitPointers;
   }
 
-  bool shouldPassIndirectlyForSwift(ArrayRef<llvm::Type*> scalars,
-                                    bool asReturnValue) const override {
-    return occupiesMoreThan(CGT, scalars, /*total*/ 4);
-  }
-  bool isSwiftErrorInRegister() const override {
-    return true;
-  }
-};
-
-/// WinX86_64ABIInfo - The Windows X86_64 ABI information.
-class WinX86_64ABIInfo : public SwiftABIInfo {
-public:
-  WinX86_64ABIInfo(CodeGen::CodeGenTypes &CGT)
-      : SwiftABIInfo(CGT),
-        IsMingw64(getTarget().getTriple().isWindowsGNUEnvironment()) {}
-
-  void computeInfo(CGFunctionInfo &FI) const override;
-
-  Address EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
-                    QualType Ty) const override;
-
   bool isHomogeneousAggregateBaseType(QualType Ty) const override {
     // FIXME: Assumes vectorcall is in use.
     return isX86VectorTypeForVectorCall(getContext(), Ty);
@@ -2222,16 +2215,6 @@ public:
   bool isSwiftErrorInRegister() const override {
     return true;
   }
-
-private:
-  ABIArgInfo classify(QualType Ty, unsigned &FreeSSERegs, bool IsReturnType,
-                      bool IsVectorCall, bool IsRegCall) const;
-  ABIArgInfo reclassifyHvaArgType(QualType Ty, unsigned &FreeSSERegs,
-                                      const ABIArgInfo &current) const;
-  void computeVectorCallArgs(CGFunctionInfo &FI, unsigned FreeSSERegs,
-                             bool IsVectorCall, bool IsRegCall) const;
-
-    bool IsMingw64;
 };
 
 class X86_64TargetCodeGenInfo : public TargetCodeGenInfo {
@@ -2391,7 +2374,7 @@ class WinX86_64TargetCodeGenInfo : public TargetCodeGenInfo {
 public:
   WinX86_64TargetCodeGenInfo(CodeGen::CodeGenTypes &CGT,
                              X86AVXABILevel AVXLevel)
-      : TargetCodeGenInfo(new WinX86_64ABIInfo(CGT)) {}
+      : TargetCodeGenInfo(new X86_64ABIInfo(CGT, AVXLevel)) {}
 
   void setTargetAttributes(const Decl *D, llvm::GlobalValue *GV,
                            CodeGen::CodeGenModule &CGM) const override;
@@ -3537,15 +3520,19 @@ ABIArgInfo X86_64ABIInfo::classifyRegCallStructType(QualType Ty,
   return classifyRegCallStructTypeImpl(Ty, NeededInt, NeededSSE);
 }
 
+static bool isWin64CC(CGFunctionInfo &FI, bool IsWin64Target) {
+  return FI.getCallingConvention() == llvm::CallingConv::X86_VectorCall ||
+    FI.getCallingConvention() == llvm::CallingConv::Win64 ||
+    (IsWin64Target &&
+     FI.getCallingConvention() != llvm::CallingConv::X86_64_SysV);
+}
+
 void X86_64ABIInfo::computeInfo(CGFunctionInfo &FI) const {
 
   const unsigned CallingConv = FI.getCallingConvention();
-  // It is possible to force Win64 calling convention on any x86_64 target by
-  // using __attribute__((ms_abi)). In such case to correctly emit Win64
-  // compatible code delegate this call to WinX86_64ABIInfo::computeInfo.
-  if (CallingConv == llvm::CallingConv::Win64) {
-    WinX86_64ABIInfo Win64ABIInfo(CGT);
-    Win64ABIInfo.computeInfo(FI);
+
+  if (isWin64CC(FI, IsWin64)) {
+    computeInfoWin64(FI);
     return;
   }
 
@@ -3655,6 +3642,9 @@ static Address EmitX86_64VAArgFromMemory(CodeGenFunction &CGF,
 
 Address X86_64ABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                  QualType Ty) const {
+  if (IsWin64)
+    return EmitMSVAArg(CGF, VAListAddr, Ty);
+
   // Assume that va_list type is correct; should be pointer to LLVM type:
   // struct {
   //   i32 gp_offset;
@@ -3851,14 +3841,20 @@ Address X86_64ABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
 
 Address X86_64ABIInfo::EmitMSVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                    QualType Ty) const {
-  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, /*indirect*/ false,
+
+  // MS x64 ABI requirement: "Any argument that doesn't fit in 8 bytes, or is
+  // not 1, 2, 4, or 8 bytes, must be passed by reference."
+  uint64_t Width = getContext().getTypeSize(Ty);
+  bool IsIndirect = Width > 64 || !llvm::isPowerOf2_64(Width);
+
+  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, IsIndirect,
                           CGF.getContext().getTypeInfoInChars(Ty),
                           CharUnits::fromQuantity(8),
                           /*allowHigherAlign*/ false);
 }
 
 ABIArgInfo
-WinX86_64ABIInfo::reclassifyHvaArgType(QualType Ty, unsigned &FreeSSERegs,
+X86_64ABIInfo::reclassifyHvaArgType(QualType Ty, unsigned &FreeSSERegs,
                                     const ABIArgInfo &current) const {
   // Assumes vectorCall calling convention.
   const Type *Base = nullptr;
@@ -3872,9 +3868,9 @@ WinX86_64ABIInfo::reclassifyHvaArgType(QualType Ty, unsigned &FreeSSERegs,
   return current;
 }
 
-ABIArgInfo WinX86_64ABIInfo::classify(QualType Ty, unsigned &FreeSSERegs,
-                                      bool IsReturnType, bool IsVectorCall,
-                                      bool IsRegCall) const {
+ABIArgInfo X86_64ABIInfo::classifyWin64(QualType Ty, unsigned &FreeSSERegs,
+                                        bool IsReturnType, bool IsVectorCall,
+                                        bool IsRegCall) const {
 
   if (Ty->isVoidType())
     return ABIArgInfo::getIgnore();
@@ -3934,13 +3930,13 @@ ABIArgInfo WinX86_64ABIInfo::classify(QualType Ty, unsigned &FreeSSERegs,
       return ABIArgInfo::getDirect();
   }
 
-  if (RT || Ty->isAnyComplexType() || Ty->isMemberPointerType()) {
-    // MS x64 ABI requirement: "Any argument that doesn't fit in 8 bytes, or is
-    // not 1, 2, 4, or 8 bytes, must be passed by reference."
-    if (Width > 64 || !llvm::isPowerOf2_64(Width))
-      return getNaturalAlignIndirect(Ty, /*ByVal=*/false);
+  // MS x64 ABI requirement: "Any argument that doesn't fit in 8 bytes, or is
+  // not 1, 2, 4, or 8 bytes, must be passed by reference."
+  if (Width > 64 || !llvm::isPowerOf2_64(Width))
+    return getNaturalAlignIndirect(Ty, /*ByVal=*/false);
 
-    // Otherwise, coerce it to a small integer.
+  if (RT || Ty->isAnyComplexType() || Ty->isMemberPointerType()) {
+    // At this point we know it fits in a GPR; coerce it to a small integer.
     return ABIArgInfo::getDirect(llvm::IntegerType::get(getVMContext(), Width));
   }
 
@@ -3961,22 +3957,23 @@ ABIArgInfo WinX86_64ABIInfo::classify(QualType Ty, unsigned &FreeSSERegs,
   return ABIArgInfo::getDirect();
 }
 
-void WinX86_64ABIInfo::computeVectorCallArgs(CGFunctionInfo &FI,
-                                             unsigned FreeSSERegs,
-                                             bool IsVectorCall,
-                                             bool IsRegCall) const {
+void X86_64ABIInfo::computeVectorCallArgs(CGFunctionInfo &FI,
+                                          unsigned FreeSSERegs,
+                                          bool IsVectorCall,
+                                          bool IsRegCall) const {
   unsigned Count = 0;
   for (auto &I : FI.arguments()) {
     // Vectorcall in x64 only permits the first 6 arguments to be passed
     // as XMM/YMM registers.
     if (Count < VectorcallMaxParamNumAsReg)
-      I.info = classify(I.type, FreeSSERegs, false, IsVectorCall, IsRegCall);
+      I.info = classifyWin64(I.type, FreeSSERegs, false, IsVectorCall,
+                             IsRegCall);
     else {
       // Since these cannot be passed in registers, pretend no registers
       // are left.
       unsigned ZeroSSERegsAvail = 0;
-      I.info = classify(I.type, /*FreeSSERegs=*/ZeroSSERegsAvail, false,
-                        IsVectorCall, IsRegCall);
+      I.info = classifyWin64(I.type, /*FreeSSERegs=*/ZeroSSERegsAvail, false,
+                             IsVectorCall, IsRegCall);
     }
     ++Count;
   }
@@ -3986,7 +3983,7 @@ void WinX86_64ABIInfo::computeVectorCallArgs(CGFunctionInfo &FI,
   }
 }
 
-void WinX86_64ABIInfo::computeInfo(CGFunctionInfo &FI) const {
+void X86_64ABIInfo::computeInfoWin64(CGFunctionInfo &FI) const {
   bool IsVectorCall =
       FI.getCallingConvention() == llvm::CallingConv::X86_VectorCall;
   bool IsRegCall = FI.getCallingConvention() == llvm::CallingConv::X86_RegCall;
@@ -4001,8 +3998,8 @@ void WinX86_64ABIInfo::computeInfo(CGFunctionInfo &FI) const {
   }
 
   if (!getCXXABI().classifyReturnType(FI))
-    FI.getReturnInfo() = classify(FI.getReturnType(), FreeSSERegs, true,
-                                  IsVectorCall, IsRegCall);
+    FI.getReturnInfo() = classifyWin64(FI.getReturnType(), FreeSSERegs, true,
+                                       IsVectorCall, IsRegCall);
 
   if (IsVectorCall) {
     // We can use up to 6 SSE register parameters with vectorcall.
@@ -4016,27 +4013,10 @@ void WinX86_64ABIInfo::computeInfo(CGFunctionInfo &FI) const {
     computeVectorCallArgs(FI, FreeSSERegs, IsVectorCall, IsRegCall);
   } else {
     for (auto &I : FI.arguments())
-      I.info = classify(I.type, FreeSSERegs, false, IsVectorCall, IsRegCall);
+      I.info = classifyWin64(I.type, FreeSSERegs, false, IsVectorCall,
+                             IsRegCall);
   }
 
-}
-
-Address WinX86_64ABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
-                                    QualType Ty) const {
-
-  bool IsIndirect = false;
-
-  // MS x64 ABI requirement: "Any argument that doesn't fit in 8 bytes, or is
-  // not 1, 2, 4, or 8 bytes, must be passed by reference."
-  if (isAggregateTypeForABI(Ty) || Ty->isMemberPointerType()) {
-    uint64_t Width = getContext().getTypeSize(Ty);
-    IsIndirect = Width > 64 || !llvm::isPowerOf2_64(Width);
-  }
-
-  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, IsIndirect,
-                          CGF.getContext().getTypeInfoInChars(Ty),
-                          CharUnits::fromQuantity(8),
-                          /*allowHigherAlign*/ false);
 }
 
 // PowerPC-32
