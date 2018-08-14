@@ -589,6 +589,7 @@ public:
   X86_64TargetInfo(const llvm::Triple &Triple, const TargetOptions &Opts)
       : X86TargetInfo(Triple, Opts) {
     const bool IsX32 = getTriple().getEnvironment() == llvm::Triple::GNUX32;
+    const bool IsWine32 = getTriple().getEnvironment() == llvm::Triple::Wine32;
     bool IsWinCOFF =
         getTriple().isOSWindows() && getTriple().isOSBinFormatCOFF();
     LongWidth = LongAlign = PointerWidth = PointerAlign = IsX32 ? 32 : 64;
@@ -605,10 +606,16 @@ public:
     RegParmMax = 6;
 
     // Pointers are 32-bit in x32.
-    resetDataLayout(IsX32
-                        ? "e-m:e-p:32:32-i64:64-f80:128-n8:16:32:64-S128"
-                        : IsWinCOFF ? "e-m:w-i64:64-f80:128-n8:16:32:64-S128"
-                                    : "e-m:e-i64:64-f80:128-n8:16:32:64-S128");
+    resetDataLayout(
+        IsX32
+            ? "e-m:e-p:32:32-i64:64-f80:128-n8:16:32:64-S128"
+            : IsWine32
+                ? IsWinCOFF
+                    ? "e-m:w-p32:32:32-A32-i64:64-f80:128-n8:16:32:64-S128"
+                    : "e-m:e-p32:32:32-A32-i64:64-f80:128-n8:16:32:64-S128"
+                : IsWinCOFF
+                    ? "e-m:w-i64:64-f80:128-n8:16:32:64-S128"
+                    : "e-m:e-i64:64-f80:128-n8:16:32:64-S128");
 
     // Use fpret only for long double.
     RealTypeUsesObjCFPRet = (1 << TargetInfo::LongDouble);
@@ -794,12 +801,16 @@ class LLVM_LIBRARY_VISIBILITY DarwinX86_64TargetInfo
 public:
   DarwinX86_64TargetInfo(const llvm::Triple &Triple, const TargetOptions &Opts)
       : DarwinTargetInfo<X86_64TargetInfo>(Triple, Opts) {
+    const bool IsWine32 = getTriple().getEnvironment() == llvm::Triple::Wine32;
+
     Int64Type = SignedLongLong;
     // The 64-bit iOS simulator uses the builtin bool type for Objective-C.
     llvm::Triple T = llvm::Triple(Triple);
     if (T.isiOS())
       UseSignedCharForObjCBool = false;
-    resetDataLayout("e-m:o-i64:64-f80:128-n8:16:32:64-S128");
+    resetDataLayout(IsWine32
+                        ? "e-m:o-p32:32:32-A32-i64:64-f80:128-n8:16:32:64-S128"
+                        : "e-m:o-i64:64-f80:128-n8:16:32:64-S128");
   }
 
   bool handleTargetFeatures(std::vector<std::string> &Features,

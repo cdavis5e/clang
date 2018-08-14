@@ -404,6 +404,9 @@ static llvm::Triple computeTargetTriple(const Driver &D,
     // If an explicit Darwin arch name is given, that trumps all.
     if (!DarwinArchName.empty()) {
       tools::darwin::setTripleTypeForMachOArchName(Target, DarwinArchName);
+      if (Args.hasArg(options::OPT_mwine32) &&
+          Target.getArch() == llvm::Triple::x86_64)
+        Target.setEnvironment(llvm::Triple::Wine32);
       return Target;
     }
 
@@ -434,9 +437,10 @@ static llvm::Triple computeTargetTriple(const Driver &D,
       Target.getOS() == llvm::Triple::Minix)
     return Target;
 
-  // Handle pseudo-target flags '-m64', '-mx32', '-m32' and '-m16'.
-  Arg *A = Args.getLastArg(options::OPT_m64, options::OPT_mx32,
-                           options::OPT_m32, options::OPT_m16);
+  // Handle pseudo-target flags '-m64', '-mwine32', '-mx32', '-m32' and '-m16'.
+  Arg *A = Args.getLastArg(options::OPT_m64, options::OPT_mwine32,
+                           options::OPT_mx32, options::OPT_m32,
+                           options::OPT_m16);
   if (A) {
     llvm::Triple::ArchType AT = llvm::Triple::UnknownArch;
 
@@ -444,6 +448,10 @@ static llvm::Triple computeTargetTriple(const Driver &D,
       AT = Target.get64BitArchVariant().getArch();
       if (Target.getEnvironment() == llvm::Triple::GNUX32)
         Target.setEnvironment(llvm::Triple::GNU);
+    } else if (A->getOption().matches(options::OPT_mwine32) &&
+               Target.get64BitArchVariant().getArch() == llvm::Triple::x86_64) {
+      AT = llvm::Triple::x86_64;
+      Target.setEnvironment(llvm::Triple::Wine32);
     } else if (A->getOption().matches(options::OPT_mx32) &&
                Target.get64BitArchVariant().getArch() == llvm::Triple::x86_64) {
       AT = llvm::Triple::x86_64;
