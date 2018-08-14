@@ -10469,3 +10469,10 @@
 // RISCV64-LINUX: #define __unix__ 1
 // RISCV64-LINUX: #define linux 1
 // RISCV64-LINUX: #define unix 1
+//
+// RUN: %clang_cc1 -E -dM -x c < /dev/null 2>&1 \
+// RUN:     -triple x86_64-apple-macosx10.13.0-wine32 \
+// RUN:   | FileCheck -match-full-lines %s -check-prefix=WINE32
+// WINE32: #define __i386_on_x86_64__ 1
+// WINE32: #define __x86_64 1
+// WINE32: #define __x86_64__ 1

@@ -879,6 +879,9 @@ void X86TargetInfo::getTargetDefines(const LangOptions &Opts,
     DefineStd(Builder, "i386", Opts);
   }
 
+  if (getTriple().getEnvironment() == llvm::Triple::Wine32)
+    Builder.defineMacro("__i386_on_x86_64__");
+
   // Subtarget options.
   // FIXME: We are hard-coding the tune parameters based on the CPU, but they
   // truly should be based on -mtune options.
