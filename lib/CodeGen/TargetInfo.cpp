@@ -2215,6 +2215,8 @@ public:
   bool isSwiftErrorInRegister() const override {
     return true;
   }
+
+  bool isWine32Target() const { return IsWine32; }
 };
 
 class X86_64TargetCodeGenInfo : public TargetCodeGenInfo {
@@ -2269,6 +2271,12 @@ public:
     }
 
     return TargetCodeGenInfo::isNoProtoCallVariadic(args, fnType);
+  }
+
+  LangAS getASTAllocaAddressSpace() const override {
+    if (getABIInfo().isWine32Target())
+      return LangAS::ptr32;
+    return LangAS::Default;
   }
 
   llvm::Constant *

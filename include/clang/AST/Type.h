@@ -474,6 +474,10 @@ public:
     return
         // Address spaces must match exactly.
         getAddressSpace() == other.getAddressSpace() ||
+        // For 64-32 interop, the default address space is a superset
+        // of the 32-bit space.
+        (getAddressSpace() == LangAS::Default &&
+         other.getAddressSpace() == LangAS::ptr32) ||
         // Otherwise in OpenCLC v2.0 s6.5.5: every address space except
         // for __constant can be used as __generic.
         (getAddressSpace() == LangAS::opencl_generic &&

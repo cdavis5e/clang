@@ -616,6 +616,8 @@ public:
                 : IsWinCOFF
                     ? "e-m:w-i64:64-f80:128-n8:16:32:64-S128"
                     : "e-m:e-i64:64-f80:128-n8:16:32:64-S128");
+    if (IsWine32)
+      set6432InteropAddrSpaceMap();
 
     // Use fpret only for long double.
     RealTypeUsesObjCFPRet = (1 << TargetInfo::LongDouble);
@@ -629,6 +631,16 @@ public:
     // x86-64 has atomics up to 16 bytes.
     MaxAtomicPromoteWidth = 128;
     MaxAtomicInlineWidth = 64;
+  }
+
+  uint64_t getPointerWidthV(unsigned AS) const override {
+    if (AS == 32) return 32;
+    return PointerWidth;
+  }
+
+  uint64_t getPointerAlignV(unsigned AS) const override {
+    if (AS == 32) return 32;
+    return PointerAlign;
   }
 
   BuiltinVaListKind getBuiltinVaListKind() const override {
@@ -692,6 +704,14 @@ public:
   }
 
   ArrayRef<Builtin::Info> getTargetBuiltins() const override;
+
+  void set6432InteropAddrSpaceMap();
+
+  LangAS getStackAddressSpace(const LangOptions &) const override {
+    if (getTriple().getEnvironment() == llvm::Triple::Wine32)
+      return LangAS::ptr32;
+    return LangAS::Default;
+  }
 };
 
 // x86-64 Windows target

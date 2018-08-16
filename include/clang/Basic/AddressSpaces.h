@@ -43,6 +43,9 @@ enum class LangAS : unsigned {
   cuda_constant,
   cuda_shared,
 
+  // 64-32 interop address spaces.
+  ptr32,
+
   // This denotes the count of language-specific address spaces and also
   // the offset added to the target-specific address spaces, which are usually
   // specified by address space attributes __attribute__(address_space(n))).

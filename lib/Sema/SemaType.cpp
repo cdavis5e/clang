@@ -6355,6 +6355,29 @@ static bool handleMSPointerTypeQualifierAttr(TypeProcessingState &State,
     return true;
   }
 
+  // If we want it, add implicit address space for __ptr32/__ptr64.
+  if (S.LangOpts.Interop6432 && NewAttrKind == attr::Ptr32) {
+    QualType PointeeTy = Desugared->castAs<PointerType>()->getPointeeType();
+    bool ChangedType = false;
+    // An explicit address space trumps this.
+    if (!PointeeTy.getQualifiers().hasAddressSpace()) {
+      PointeeTy = S.Context.getAddrSpaceQualType(PointeeTy, LangAS::ptr32);
+      ChangedType = true;
+    }
+    if (ChangedType) {
+      QualType NewTy = S.Context.getPointerType(PointeeTy);
+      // Unfortunately, the type might've been wrapped in several layers of
+      // AttributedType. We'll have to build those layers back up manually.
+      const AttributedType *AT = dyn_cast<AttributedType>(Type);
+      while (AT) {
+        AttributedType::Kind CurAttrKind = AT->getAttrKind();
+        NewTy = S.Context.getAttributedType(CurAttrKind, NewTy, NewTy);
+        AT = dyn_cast<AttributedType>(AT->getEquivalentType());
+      }
+      Type = NewTy;
+    }
+  }
+
   Type = State.getAttributedType(A, Type, Type);
   return false;
 }

@@ -760,7 +760,8 @@ static const LangASMap *getAddressSpaceMap(const TargetInfo &T,
       4, // opencl_generic
       5, // cuda_device
       6, // cuda_constant
-      7  // cuda_shared
+      7, // cuda_shared
+      8  // ptr32
     };
     return &FakeAddrSpaceMap;
   } else {

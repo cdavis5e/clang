@@ -1910,6 +1910,9 @@ def m64 : Flag<["-"], "m64">, Group<m_Group>, Flags<[DriverOption, CoreOption]>;
 def mwine32 : Flag<["-"], "mwine32">, Group<m_Group>, Flags<[DriverOption, CoreOption]>,
   HelpText<"Enable Wine32 support (32-bit pointers and calls)">;
 def mx32 : Flag<["-"], "mx32">, Group<m_Group>, Flags<[DriverOption, CoreOption]>;
+def m64_32_interop : Flag<["-"], "m64-32-interop">, Group<m_Group>, Flags<[CC1Option]>,
+  HelpText<"Enable 64-32 interop support">;
+def mno_64_32_interop : Flag<["-"], "mno-64-32-interop">, Group<m_Group>, Flags<[CC1Option]>;
 def mabi_EQ : Joined<["-"], "mabi=">, Group<m_Group>;
 def miamcu : Flag<["-"], "miamcu">, Group<m_Group>, Flags<[DriverOption, CoreOption]>,
   HelpText<"Use Intel MCU ABI">;

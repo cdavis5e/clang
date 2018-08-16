@@ -2813,6 +2813,10 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
 
   Opts.CompleteMemberPointers = Args.hasArg(OPT_fcomplete_member_pointers);
   Opts.BuildingPCHWithObjectFile = Args.hasArg(OPT_building_pch_with_obj);
+
+  Opts.Interop6432 = Args.hasFlag(
+      OPT_m64_32_interop, OPT_mno_64_32_interop,
+      T.getEnvironment() == llvm::Triple::Wine32);
 }
 
 static bool isStrictlyPreprocessorAction(frontend::ActionKind Action) {

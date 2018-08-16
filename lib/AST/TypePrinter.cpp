@@ -1724,7 +1724,7 @@ void Qualifiers::print(raw_ostream &OS, const PrintingPolicy& Policy,
   }
   LangAS addrspace = getAddressSpace();
   if (addrspace != LangAS::Default) {
-    if (addrspace != LangAS::opencl_private) {
+    if (addrspace != LangAS::opencl_private && addrspace != LangAS::ptr32) {
       if (addSpace)
         OS << ' ';
       addSpace = true;
@@ -1749,6 +1749,8 @@ void Qualifiers::print(raw_ostream &OS, const PrintingPolicy& Policy,
         break;
       case LangAS::cuda_shared:
         OS << "__shared";
+        break;
+      case LangAS::ptr32:
         break;
       default:
         OS << "__attribute__((address_space(";

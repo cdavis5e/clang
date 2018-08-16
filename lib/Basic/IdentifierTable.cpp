@@ -243,6 +243,11 @@ void IdentifierTable::AddKeywords(const LangOptions &LangOpts) {
   if (LangOpts.DeclSpecKeyword)
     AddKeyword("__declspec", tok::kw___declspec, KEYALL, LangOpts, *this);
 
+  if (LangOpts.Interop6432) {
+    AddKeyword("__ptr32", tok::kw___ptr32, KEYALL, LangOpts, *this);
+    AddKeyword("__ptr64", tok::kw___ptr64, KEYALL, LangOpts, *this);
+  }
+
   // Add the '_experimental_modules_import' contextual keyword.
   get("import").setModulesImport(true);
 }
