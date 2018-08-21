@@ -5968,7 +5968,7 @@ CheckTemplateArgumentAddressOfObjectOrFunction(Sema &S,
         // If the template parameter has pointer type but the address of
         // this object was not taken, complain and (possibly) recover by
         // taking the address of the entity.
-        ArgType = S.Context.getPointerType(Var->getType());
+        ArgType = S.Context.getPointerType(Var->getType(), true);
         if (!S.Context.hasSameUnqualifiedType(ArgType, ParamType)) {
           S.Diag(Arg->getBeginLoc(), diag::err_template_arg_not_address_of)
               << ParamType;

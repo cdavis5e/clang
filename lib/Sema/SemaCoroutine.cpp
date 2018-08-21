@@ -87,8 +87,9 @@ static QualType lookupPromiseType(Sema &S, const FunctionDecl *FD,
       QualType T =
           MD->getThisType(S.Context)->getAs<PointerType>()->getPointeeType();
       T = FnType->getRefQualifier() == RQ_RValue
-              ? S.Context.getRValueReferenceType(T)
-              : S.Context.getLValueReferenceType(T, /*SpelledAsLValue*/ true);
+              ? S.Context.getRValueReferenceType(T, /*HonorASPragma*/ true)
+              : S.Context.getLValueReferenceType(T, /*SpelledAsLValue*/ true,
+                                                 /*HonorASPragma*/ true);
       AddArg(T);
     }
   }

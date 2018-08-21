@@ -15909,7 +15909,7 @@ namespace {
 
       Expr *SubExpr = SubResult.get();
       E->setSubExpr(SubExpr);
-      E->setType(S.Context.getPointerType(SubExpr->getType()));
+      E->setType(S.Context.getPointerType(SubExpr->getType(), true));
       assert(E->getValueKind() == VK_RValue);
       assert(E->getObjectKind() == OK_Ordinary);
       return E;

@@ -4621,7 +4621,7 @@ bool Sema::DeduceReturnType(FunctionDecl *FD, SourceLocation Loc,
     QualType RetType = getLambdaConversionFunctionResultType(
         CallOp->getType()->castAs<FunctionProtoType>());
     if (FD->getReturnType()->getAs<PointerType>())
-      RetType = Context.getPointerType(RetType);
+      RetType = Context.getPointerType(RetType, true);
     else {
       assert(FD->getReturnType()->getAs<BlockPointerType>());
       RetType = Context.getBlockPointerType(RetType);
@@ -4658,9 +4658,9 @@ AddImplicitObjectParameterType(ASTContext &Context,
   ArgTy = Context.getQualifiedType(ArgTy,
                         Qualifiers::fromCVRMask(Method->getTypeQualifiers()));
   if (Method->getRefQualifier() == RQ_RValue)
-    ArgTy = Context.getRValueReferenceType(ArgTy);
+    ArgTy = Context.getRValueReferenceType(ArgTy, true);
   else
-    ArgTy = Context.getLValueReferenceType(ArgTy);
+    ArgTy = Context.getLValueReferenceType(ArgTy, true, true);
   ArgTypes.push_back(ArgTy);
 }
 

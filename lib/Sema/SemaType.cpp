@@ -1953,7 +1953,7 @@ QualType Sema::BuildPointerType(QualType T,
     T = inferARCLifetimeForPointee(*this, T, Loc, /*reference*/ false);
 
   // Build the pointer type.
-  return Context.getPointerType(T);
+  return Context.getPointerType(T, /*HonorASPragma*/ true);
 }
 
 /// Build a reference type.
@@ -2014,8 +2014,9 @@ QualType Sema::BuildReferenceType(QualType T, bool SpelledAsLValue,
 
   // Handle restrict on references.
   if (LValueRef)
-    return Context.getLValueReferenceType(T, SpelledAsLValue);
-  return Context.getRValueReferenceType(T);
+    return Context.getLValueReferenceType(T, SpelledAsLValue,
+                                          /*HonorASPragma*/ true);
+  return Context.getRValueReferenceType(T, /*HonorASPragma*/ true);
 }
 
 /// Build a Read-only Pipe type.
@@ -6356,12 +6357,21 @@ static bool handleMSPointerTypeQualifierAttr(TypeProcessingState &State,
   }
 
   // If we want it, add implicit address space for __ptr32/__ptr64.
-  if (S.LangOpts.Interop6432 && NewAttrKind == attr::Ptr32) {
+  if (S.LangOpts.Interop6432 &&
+      (NewAttrKind == attr::Ptr32 || NewAttrKind == attr::Ptr64)) {
     QualType PointeeTy = Desugared->castAs<PointerType>()->getPointeeType();
     bool ChangedType = false;
     // An explicit address space trumps this.
-    if (!PointeeTy.getQualifiers().hasAddressSpace()) {
+    if (NewAttrKind == attr::Ptr32 &&
+        !PointeeTy.getQualifiers().hasAddressSpace()) {
       PointeeTy = S.Context.getAddrSpaceQualType(PointeeTy, LangAS::ptr32);
+      ChangedType = true;
+    } else if (NewAttrKind == attr::Ptr64 &&
+               PointeeTy.getAddressSpace() == LangAS::ptr32) {
+      // We can't put __ptr32 and __ptr64 on the same type, so we can only
+      // reach here if the address space was altered by a default_addr_space
+      // pragma.
+      PointeeTy = S.Context.removeAddrSpaceQualType(PointeeTy);
       ChangedType = true;
     }
     if (ChangedType) {
@@ -8073,7 +8083,7 @@ static QualType getDecltypeForExpr(Sema &S, Expr *E) {
         if (VarDecl *Var = dyn_cast<VarDecl>(DRE->getDecl())) {
           QualType T = S.getCapturedDeclRefType(Var, DRE->getLocation());
           if (!T.isNull())
-            return S.Context.getLValueReferenceType(T);
+            return S.Context.getLValueReferenceType(T, /*HonorASPragma*/ true);
         }
       }
     }
@@ -8086,10 +8096,10 @@ static QualType getDecltypeForExpr(Sema &S, Expr *E) {
   switch (E->getValueKind()) {
   //     - otherwise, if e is an xvalue, decltype(e) is T&&, where T is the
   //       type of e;
-  case VK_XValue: T = S.Context.getRValueReferenceType(T); break;
+  case VK_XValue: T = S.Context.getRValueReferenceType(T, true); break;
   //     - otherwise, if e is an lvalue, decltype(e) is T&, where T is the
   //       type of e;
-  case VK_LValue: T = S.Context.getLValueReferenceType(T); break;
+  case VK_LValue: T = S.Context.getLValueReferenceType(T, true); break;
   //  - otherwise, decltype(e) is the type of e.
   case VK_RValue: break;
   }

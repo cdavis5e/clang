@@ -916,6 +916,9 @@ def warn_pragma_expected_identifier : Warning<
   "expected identifier in '#pragma %0' - ignored">, InGroup<IgnoredPragmas>;
 def warn_pragma_expected_string : Warning<
   "expected string literal in '#pragma %0' - ignoring">, InGroup<IgnoredPragmas>;
+def warn_pragma_expected_identifier_or_integer : Warning<
+  "expected identifier or integer in '#pragma %0' - ignored">,
+  InGroup<IgnoredPragmas>;
 def warn_pragma_missing_argument : Warning<
   "missing argument to '#pragma %0'%select{|; expected %2}1">, InGroup<IgnoredPragmas>;
 def warn_pragma_invalid_argument : Warning<
@@ -1068,6 +1071,10 @@ def err_pragma_attribute_unknown_subject_sub_rule : Error<
   "sub-rules: %3}2">;
 def err_pragma_attribute_duplicate_subject : Error<
   "duplicate attribute subject matcher '%0'">;
+// #pragma clang default_addr_space(...)
+def warn_pragma_expected_addr_space : Warning<
+  "expected address space name in '#pragma clang default_addr_space' - ignoring">,
+  InGroup<IgnoredPragmas>;
 
 def err_opencl_unroll_hint_on_non_loop : Error<
   "OpenCL only supports 'opencl_unroll_hint' attribute on for, while, and do statements">;

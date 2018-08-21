@@ -5210,7 +5210,7 @@ static bool tryObjCWritebackConversion(Sema &S,
   if (const ArrayType *ArgArrayType = S.Context.getAsArrayType(ArgType)) {
     ArrayDecay = true;
     ArgPointee = ArgArrayType->getElementType();
-    ArgType = S.Context.getPointerType(ArgPointee);
+    ArgType = S.Context.getPointerType(ArgPointee, true);
   }
 
   // Handle write-back conversion.
@@ -5234,7 +5234,7 @@ static bool tryObjCWritebackConversion(Sema &S,
     QualType ResultType;
     if (ArrayDecay) {
       ICS.Standard.First = ICK_Array_To_Pointer;
-      ResultType = S.Context.getPointerType(ArgPointee);
+      ResultType = S.Context.getPointerType(ArgPointee, true);
     } else {
       ICS.Standard.First = ICK_Lvalue_To_Rvalue;
       ResultType = Initializer->getType().getNonLValueExprType(S.Context);
@@ -7704,7 +7704,7 @@ InitializationSequence::Perform(Sema &S,
       if (ResultType &&
           ResultType->getNonReferenceType()->isIncompleteArrayType()) {
         if ((*ResultType)->isRValueReferenceType())
-          Ty = S.Context.getRValueReferenceType(Ty);
+          Ty = S.Context.getRValueReferenceType(Ty, true);
         else if ((*ResultType)->isLValueReferenceType())
           Ty = S.Context.getLValueReferenceType(Ty,
             (*ResultType)->getAs<LValueReferenceType>()->isSpelledAsLValue());

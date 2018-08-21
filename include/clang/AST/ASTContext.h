@@ -569,6 +569,10 @@ public:
   IntrusiveRefCntPtr<ExternalASTSource> ExternalSource;
   ASTMutationListener *Listener = nullptr;
 
+  /// The default address space for pointer types that don't have one
+  /// explicitly given.
+  LangAS DefaultAddrSpace = LangAS::Default;
+
   /// Contains parents of a node.
   using ParentVector = llvm::SmallVector<ast_type_traits::DynTypedNode, 2>;
 
@@ -1229,9 +1233,10 @@ public:
 
   /// Return the uniqued reference to the type for a pointer to
   /// the specified type.
-  QualType getPointerType(QualType T) const;
-  CanQualType getPointerType(CanQualType T) const {
-    return CanQualType::CreateUnsafe(getPointerType((QualType) T));
+  QualType getPointerType(QualType T, bool HonorASPragma = false) const;
+  CanQualType getPointerType(CanQualType T, bool HonorASPragma = false) const {
+    return CanQualType::CreateUnsafe(getPointerType((QualType) T,
+                                                    HonorASPragma));
   }
 
   /// Return the uniqued reference to a type adjusted from the original
@@ -1298,12 +1303,13 @@ public:
 
   /// Return the uniqued reference to the type for an lvalue reference
   /// to the specified type.
-  QualType getLValueReferenceType(QualType T, bool SpelledAsLValue = true)
+  QualType getLValueReferenceType(QualType T, bool SpelledAsLValue = true,
+                                  bool HonorASPragma = false)
     const;
 
   /// Return the uniqued reference to the type for an rvalue reference
   /// to the specified type.
-  QualType getRValueReferenceType(QualType T) const;
+  QualType getRValueReferenceType(QualType T, bool HonorASPragma = false) const;
 
   /// Return the uniqued reference to the type for a member pointer to
   /// the specified type in the specified class.

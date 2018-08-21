@@ -2781,7 +2781,11 @@ QualType ASTContext::getComplexType(QualType T) const {
 
 /// getPointerType - Return the uniqued reference to the type for a pointer to
 /// the specified type.
-QualType ASTContext::getPointerType(QualType T) const {
+QualType ASTContext::getPointerType(QualType T, bool HonorASPragma) const {
+  if (HonorASPragma && DefaultAddrSpace != LangAS::Default &&
+      !T.getQualifiers().hasAddressSpace())
+    T = getAddrSpaceQualType(T, DefaultAddrSpace);
+
   // Unique pointers, to guarantee there is only one pointer of a particular
   // structure.
   llvm::FoldingSetNodeID ID;
@@ -2795,7 +2799,7 @@ QualType ASTContext::getPointerType(QualType T) const {
   // so fill in the canonical type field.
   QualType Canonical;
   if (!T.isCanonical()) {
-    Canonical = getPointerType(getCanonicalType(T));
+    Canonical = getPointerType(getCanonicalType(T), HonorASPragma);
 
     // Get the new insert position for the node we care about.
     PointerType *NewIP = PointerTypes.FindNodeOrInsertPos(ID, InsertPos);
@@ -2901,9 +2905,14 @@ QualType ASTContext::getBlockPointerType(QualType T) const {
 /// getLValueReferenceType - Return the uniqued reference to the type for an
 /// lvalue reference to the specified type.
 QualType
-ASTContext::getLValueReferenceType(QualType T, bool SpelledAsLValue) const {
+ASTContext::getLValueReferenceType(QualType T, bool SpelledAsLValue,
+                                   bool HonorASPragma) const {
   assert(getCanonicalType(T) != OverloadTy &&
          "Unresolved overloaded function type");
+
+  if (HonorASPragma && DefaultAddrSpace != LangAS::Default &&
+      !T.getQualifiers().hasAddressSpace())
+    T = getAddrSpaceQualType(T, DefaultAddrSpace);
 
   // Unique pointers, to guarantee there is only one pointer of a particular
   // structure.
@@ -2922,7 +2931,8 @@ ASTContext::getLValueReferenceType(QualType T, bool SpelledAsLValue) const {
   QualType Canonical;
   if (!SpelledAsLValue || InnerRef || !T.isCanonical()) {
     QualType PointeeType = (InnerRef ? InnerRef->getPointeeType() : T);
-    Canonical = getLValueReferenceType(getCanonicalType(PointeeType));
+    Canonical = getLValueReferenceType(getCanonicalType(PointeeType),
+                                       true, HonorASPragma);
 
     // Get the new insert position for the node we care about.
     LValueReferenceType *NewIP =
@@ -2940,7 +2950,12 @@ ASTContext::getLValueReferenceType(QualType T, bool SpelledAsLValue) const {
 
 /// getRValueReferenceType - Return the uniqued reference to the type for an
 /// rvalue reference to the specified type.
-QualType ASTContext::getRValueReferenceType(QualType T) const {
+QualType ASTContext::getRValueReferenceType(QualType T,
+                                            bool HonorASPragma) const {
+  if (HonorASPragma && DefaultAddrSpace != LangAS::Default &&
+      !T.getQualifiers().hasAddressSpace())
+    T = getAddrSpaceQualType(T, DefaultAddrSpace);
+
   // Unique pointers, to guarantee there is only one pointer of a particular
   // structure.
   llvm::FoldingSetNodeID ID;
@@ -2958,7 +2973,8 @@ QualType ASTContext::getRValueReferenceType(QualType T) const {
   QualType Canonical;
   if (InnerRef || !T.isCanonical()) {
     QualType PointeeType = (InnerRef ? InnerRef->getPointeeType() : T);
-    Canonical = getRValueReferenceType(getCanonicalType(PointeeType));
+    Canonical = getRValueReferenceType(getCanonicalType(PointeeType),
+                                       HonorASPragma);
 
     // Get the new insert position for the node we care about.
     RValueReferenceType *NewIP =
@@ -3746,8 +3762,11 @@ QualType ASTContext::getPipeType(QualType T, bool ReadOnly) const {
 
 QualType ASTContext::adjustStringLiteralBaseType(QualType Ty) const {
   // OpenCL v1.1 s6.5.3: a string literal is in the constant address space.
-  return LangOpts.OpenCL ? getAddrSpaceQualType(Ty, LangAS::opencl_constant)
-                         : Ty;
+  return LangOpts.OpenCL
+           ? getAddrSpaceQualType(Ty, LangAS::opencl_constant)
+           : (DefaultAddrSpace != LangAS::Default
+                ? getAddrSpaceQualType(Ty, DefaultAddrSpace)
+                : Ty);
 }
 
 QualType ASTContext::getReadPipeType(QualType T) const {
@@ -5438,7 +5457,7 @@ QualType ASTContext::getArrayDecayedType(QualType Ty) const {
   const ArrayType *PrettyArrayType = getAsArrayType(Ty);
   assert(PrettyArrayType && "Not an array type!");
 
-  QualType PtrTy = getPointerType(PrettyArrayType->getElementType());
+  QualType PtrTy = getPointerType(PrettyArrayType->getElementType(), true);
 
   // int x[restrict 4] ->  int *restrict
   QualType Result = getQualifiedType(PtrTy,

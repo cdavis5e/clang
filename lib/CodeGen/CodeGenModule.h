@@ -898,9 +898,11 @@ public:
   ///
   /// \param GlobalName If provided, the name to use for the global (if one is
   /// created).
+  /// \param AS If provided, the address space in which to place the string.
   ConstantAddress
   GetAddrOfConstantCString(const std::string &Str,
-                           const char *GlobalName = nullptr);
+                           const char *GlobalName = nullptr,
+                           LangAS AS = LangAS::Default);
 
   /// Returns a pointer to a constant global variable for the given file-scope
   /// compound literal expression.

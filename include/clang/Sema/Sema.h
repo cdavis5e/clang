@@ -468,6 +468,9 @@ public:
   PragmaStack<StringLiteral *> ConstSegStack;
   PragmaStack<StringLiteral *> CodeSegStack;
 
+  // Address space #pragmas.
+  PragmaStack<LangAS> AddrSpaceStack;
+
   // RAII object to push / pop sentinel slots for all MS #pragma stacks.
   // Actions should be performed only if we enter / exit a C++ method body.
   class PragmaStackSentinelRAII {
@@ -8539,6 +8542,10 @@ public:
                          bool isTemplateInstantiation);
 
   bool checkNSReturnsRetainedReturnType(SourceLocation loc, QualType type);
+
+  /// Called on well-formed \#pragma clang default_addr_space(...).
+  void ActOnPragmaDefaultAS(SourceLocation Loc, PragmaMsStackAction Action,
+                            LangAS AS);
 
   //===--------------------------------------------------------------------===//
   // C++ Coroutines TS

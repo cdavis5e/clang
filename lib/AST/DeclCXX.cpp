@@ -2185,7 +2185,7 @@ QualType CXXMethodDecl::getThisType(ASTContext &C) const {
   QualType ClassTy = C.getTypeDeclType(getParent());
   ClassTy = C.getQualifiedType(ClassTy,
                                Qualifiers::fromCVRUMask(getTypeQualifiers()));
-  return C.getPointerType(ClassTy);
+  return C.getPointerType(ClassTy, /*HonorASPragma*/ true);
 }
 
 bool CXXMethodDecl::hasInlineBody() const {

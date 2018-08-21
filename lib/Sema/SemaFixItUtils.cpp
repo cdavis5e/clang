@@ -133,7 +133,7 @@ bool ConversionFixItGenerator::tryToFixConversion(const Expr *FullExpr,
     if (!Expr->isLValue() || Expr->getObjectKind() != OK_Ordinary)
       return false;
 
-    CanConvert = CompareTypes(S.Context.getPointerType(FromQTy), ToQTy,
+    CanConvert = CompareTypes(S.Context.getPointerType(FromQTy, true), ToQTy,
                               S, Begin, VK_RValue);
     if (CanConvert) {
 

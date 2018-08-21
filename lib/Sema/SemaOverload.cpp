@@ -2198,7 +2198,7 @@ BuildSimilarlyQualifiedPointerType(const Type *FromPtr,
     // already.
     if (isa<ObjCObjectPointerType>(ToType))
       return Context.getObjCObjectPointerType(ToPointee);
-    return Context.getPointerType(ToPointee);
+    return Context.getPointerType(ToPointee, true);
   }
 
   // Just build a canonical type that has the right qualifiers.
@@ -2207,7 +2207,7 @@ BuildSimilarlyQualifiedPointerType(const Type *FromPtr,
 
   if (isa<ObjCObjectPointerType>(ToType))
     return Context.getObjCObjectPointerType(QualifiedCanonToPointee);
-  return Context.getPointerType(QualifiedCanonToPointee);
+  return Context.getPointerType(QualifiedCanonToPointee, true);
 }
 
 static bool isNullPointerConstantForConversion(Expr *Expr,
@@ -2481,7 +2481,7 @@ bool Sema::isObjCPointerConversion(QualType FromType, QualType ToType,
                               IncompatibleObjC)) {
     // We always complain about this conversion.
     IncompatibleObjC = true;
-    ConvertedType = Context.getPointerType(ConvertedType);
+    ConvertedType = Context.getPointerType(ConvertedType, true);
     ConvertedType = AdoptQualifiers(Context, ConvertedType, FromQualifiers);
     return true;
   }
@@ -2492,7 +2492,7 @@ bool Sema::isObjCPointerConversion(QualType FromType, QualType ToType,
       isObjCPointerConversion(FromPointeeType, ToPointeeType, ConvertedType,
                               IncompatibleObjC)) {
 
-    ConvertedType = Context.getPointerType(ConvertedType);
+    ConvertedType = Context.getPointerType(ConvertedType, true);
     ConvertedType = AdoptQualifiers(Context, ConvertedType, FromQualifiers);
     return true;
   }
@@ -7443,7 +7443,7 @@ BuiltinCandidateTypeSet::AddPointerWithMoreQualifiedTypeVariants(QualType Ty,
     // Build qualified pointer type.
     QualType QPointerTy;
     if (!buildObjCPtr)
-      QPointerTy = Context.getPointerType(QPointeeTy);
+      QPointerTy = Context.getPointerType(QPointeeTy, true);
     else
       QPointerTy = Context.getObjCObjectPointerType(QPointeeTy);
 
@@ -7588,7 +7588,7 @@ static void AddBuiltinAssignmentOperatorCandidates(Sema &S,
   QualType ParamTypes[2];
 
   // T& operator=(T&, T)
-  ParamTypes[0] = S.Context.getLValueReferenceType(T);
+  ParamTypes[0] = S.Context.getLValueReferenceType(T, true, true);
   ParamTypes[1] = T;
   S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
                         /*IsAssignmentOperator=*/true);
@@ -7596,7 +7596,8 @@ static void AddBuiltinAssignmentOperatorCandidates(Sema &S,
   if (!S.Context.getCanonicalType(T).isVolatileQualified()) {
     // volatile T& operator=(volatile T&, T)
     ParamTypes[0]
-      = S.Context.getLValueReferenceType(S.Context.getVolatileType(T));
+      = S.Context.getLValueReferenceType(S.Context.getVolatileType(T),
+                                         true, true);
     ParamTypes[1] = T;
     S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
                           /*IsAssignmentOperator=*/true);
@@ -7735,7 +7736,7 @@ class BuiltinOperatorOverloadBuilder {
                                            bool HasVolatile,
                                            bool HasRestrict) {
     QualType ParamTypes[2] = {
-      S.Context.getLValueReferenceType(CandidateTy),
+      S.Context.getLValueReferenceType(CandidateTy, true, true),
       S.Context.IntTy
     };
 
@@ -7745,9 +7746,8 @@ class BuiltinOperatorOverloadBuilder {
     // Use a heuristic to reduce number of builtin candidates in the set:
     // add volatile version only if there are conversions to a volatile type.
     if (HasVolatile) {
-      ParamTypes[0] =
-        S.Context.getLValueReferenceType(
-          S.Context.getVolatileType(CandidateTy));
+      ParamTypes[0] = S.Context.getLValueReferenceType(
+          S.Context.getVolatileType(CandidateTy), true, true);
       S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet);
     }
 
@@ -7757,7 +7757,8 @@ class BuiltinOperatorOverloadBuilder {
         !CandidateTy.isRestrictQualified()) {
       ParamTypes[0]
         = S.Context.getLValueReferenceType(
-            S.Context.getCVRQualifiedType(CandidateTy, Qualifiers::Restrict));
+            S.Context.getCVRQualifiedType(CandidateTy, Qualifiers::Restrict),
+            /*SpelledAsLValue=*/true);
       S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet);
 
       if (HasVolatile) {
@@ -7765,7 +7766,8 @@ class BuiltinOperatorOverloadBuilder {
           = S.Context.getLValueReferenceType(
               S.Context.getCVRQualifiedType(CandidateTy,
                                             (Qualifiers::Volatile |
-                                             Qualifiers::Restrict)));
+                                             Qualifiers::Restrict)),
+              /*SpelledAsLValue=*/true);
         S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet);
       }
     }
@@ -8314,7 +8316,7 @@ public:
 
       // non-volatile version
       QualType ParamTypes[2] = {
-        S.Context.getLValueReferenceType(*Ptr),
+        S.Context.getLValueReferenceType(*Ptr, true, true),
         isEqualOp ? *Ptr : S.Context.getPointerDiffType(),
       };
       S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
@@ -8324,8 +8326,8 @@ public:
                           VisibleTypeConversionsQuals.hasVolatile();
       if (NeedVolatile) {
         // volatile version
-        ParamTypes[0] =
-          S.Context.getLValueReferenceType(S.Context.getVolatileType(*Ptr));
+        ParamTypes[0] = S.Context.getLValueReferenceType(
+            S.Context.getVolatileType(*Ptr), true, true);
         S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
                               /*IsAssigmentOperator=*/isEqualOp);
       }
@@ -8333,8 +8335,8 @@ public:
       if (!(*Ptr).isRestrictQualified() &&
           VisibleTypeConversionsQuals.hasRestrict()) {
         // restrict version
-        ParamTypes[0]
-          = S.Context.getLValueReferenceType(S.Context.getRestrictType(*Ptr));
+        ParamTypes[0] = S.Context.getLValueReferenceType(
+            S.Context.getRestrictType(*Ptr), true, true);
         S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
                               /*IsAssigmentOperator=*/isEqualOp);
 
@@ -8344,7 +8346,8 @@ public:
             = S.Context.getLValueReferenceType(
                 S.Context.getCVRQualifiedType(*Ptr,
                                               (Qualifiers::Volatile |
-                                               Qualifiers::Restrict)));
+                                               Qualifiers::Restrict)),
+                /*SpelledAsLValue=*/true);
           S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
                                 /*IsAssigmentOperator=*/isEqualOp);
         }
@@ -8361,7 +8364,7 @@ public:
           continue;
 
         QualType ParamTypes[2] = {
-          S.Context.getLValueReferenceType(*Ptr),
+          S.Context.getLValueReferenceType(*Ptr, true, true),
           *Ptr,
         };
 
@@ -8373,8 +8376,8 @@ public:
                            VisibleTypeConversionsQuals.hasVolatile();
         if (NeedVolatile) {
           // volatile version
-          ParamTypes[0] =
-            S.Context.getLValueReferenceType(S.Context.getVolatileType(*Ptr));
+          ParamTypes[0] = S.Context.getLValueReferenceType(
+              S.Context.getVolatileType(*Ptr), true, true);
           S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
                                 /*IsAssigmentOperator=*/true);
         }
@@ -8382,8 +8385,8 @@ public:
         if (!(*Ptr).isRestrictQualified() &&
             VisibleTypeConversionsQuals.hasRestrict()) {
           // restrict version
-          ParamTypes[0]
-            = S.Context.getLValueReferenceType(S.Context.getRestrictType(*Ptr));
+          ParamTypes[0] = S.Context.getLValueReferenceType(
+              S.Context.getRestrictType(*Ptr), true, true);
           S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
                                 /*IsAssigmentOperator=*/true);
 
@@ -8393,7 +8396,8 @@ public:
               = S.Context.getLValueReferenceType(
                   S.Context.getCVRQualifiedType(*Ptr,
                                                 (Qualifiers::Volatile |
-                                                 Qualifiers::Restrict)));
+                                                 Qualifiers::Restrict)),
+                  /*SpelledAsLValue=*/true);
             S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
                                   /*IsAssigmentOperator=*/true);
           }
@@ -8426,7 +8430,7 @@ public:
 
         // Add this built-in operator as a candidate (VQ is empty).
         ParamTypes[0] =
-          S.Context.getLValueReferenceType(ArithmeticTypes[Left]);
+          S.Context.getLValueReferenceType(ArithmeticTypes[Left], true, true);
         S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
                               /*IsAssigmentOperator=*/isEqualOp);
 
@@ -8434,7 +8438,8 @@ public:
         if (VisibleTypeConversionsQuals.hasVolatile()) {
           ParamTypes[0] =
             S.Context.getVolatileType(ArithmeticTypes[Left]);
-          ParamTypes[0] = S.Context.getLValueReferenceType(ParamTypes[0]);
+          ParamTypes[0] = S.Context.getLValueReferenceType(
+              ParamTypes[0], true, true);
           S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
                                 /*IsAssigmentOperator=*/isEqualOp);
         }
@@ -8453,14 +8458,15 @@ public:
         QualType ParamTypes[2];
         ParamTypes[1] = *Vec2;
         // Add this built-in operator as a candidate (VQ is empty).
-        ParamTypes[0] = S.Context.getLValueReferenceType(*Vec1);
+        ParamTypes[0] = S.Context.getLValueReferenceType(*Vec1, true, true);
         S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
                               /*IsAssigmentOperator=*/isEqualOp);
 
         // Add this built-in operator as a candidate (VQ is 'volatile').
         if (VisibleTypeConversionsQuals.hasVolatile()) {
           ParamTypes[0] = S.Context.getVolatileType(*Vec1);
-          ParamTypes[0] = S.Context.getLValueReferenceType(ParamTypes[0]);
+          ParamTypes[0] = S.Context.getLValueReferenceType(
+              ParamTypes[0], true, true);
           S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet,
                                 /*IsAssigmentOperator=*/isEqualOp);
         }
@@ -8492,13 +8498,14 @@ public:
 
         // Add this built-in operator as a candidate (VQ is empty).
         ParamTypes[0] =
-          S.Context.getLValueReferenceType(ArithmeticTypes[Left]);
+          S.Context.getLValueReferenceType(ArithmeticTypes[Left], true, true);
         S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet);
         if (VisibleTypeConversionsQuals.hasVolatile()) {
           // Add this built-in operator as a candidate (VQ is 'volatile').
           ParamTypes[0] = ArithmeticTypes[Left];
           ParamTypes[0] = S.Context.getVolatileType(ParamTypes[0]);
-          ParamTypes[0] = S.Context.getLValueReferenceType(ParamTypes[0]);
+          ParamTypes[0] = S.Context.getLValueReferenceType(
+              ParamTypes[0], true, true);
           S.AddBuiltinCandidate(ParamTypes, Args, CandidateSet);
         }
       }
@@ -13679,10 +13686,9 @@ Expr *Sema::FixOverloadedFunctionReference(Expr *E, DeclAccessPair Found,
     if (SubExpr == UnOp->getSubExpr())
       return UnOp;
 
-    return new (Context) UnaryOperator(SubExpr, UO_AddrOf,
-                                     Context.getPointerType(SubExpr->getType()),
-                                       VK_RValue, OK_Ordinary,
-                                       UnOp->getOperatorLoc(), false);
+    return new (Context) UnaryOperator(
+        SubExpr, UO_AddrOf, Context.getPointerType(SubExpr->getType(), true),
+        VK_RValue, OK_Ordinary, UnOp->getOperatorLoc(), false);
   }
 
   // C++ [except.spec]p17:

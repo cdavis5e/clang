@@ -784,6 +784,15 @@ void Sema::ActOnPragmaFEnvAccess(LangOptions::FEnvAccessModeKind FPC) {
   }
 }
 
+void Sema::ActOnPragmaDefaultAS(SourceLocation Loc, PragmaMsStackAction Action,
+                                LangAS AS) {
+  if (Action & PSK_Pop && AddrSpaceStack.Stack.empty())
+    Diag(Loc, diag::warn_pragma_pop_failed) << "clang default_addr_space"
+                                            << "stack empty";
+  AddrSpaceStack.Act(Loc, Action, StringRef(), AS);
+  Context.DefaultAddrSpace = AddrSpaceStack.CurrentValue;
+}
+
 
 void Sema::PushNamespaceVisibilityAttr(const VisibilityAttr *Attr,
                                        SourceLocation Loc) {

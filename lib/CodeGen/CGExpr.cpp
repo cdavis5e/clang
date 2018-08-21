@@ -2668,15 +2668,17 @@ LValue CodeGenFunction::EmitPredefinedLValue(const PredefinedExpr *E) {
   std::string GVName = llvm::join(NameItems, NameItems + 2, ".");
   if (auto *BD = dyn_cast_or_null<BlockDecl>(CurCodeDecl)) {
     std::string Name = SL->getString();
+    LangAS AS = CGM.getContext().getAsConstantArrayType(
+        SL->getType())->getElementType().getAddressSpace();
     if (!Name.empty()) {
       unsigned Discriminator =
           CGM.getCXXABI().getMangleContext().getBlockId(BD, true);
       if (Discriminator)
         Name += "_" + Twine(Discriminator + 1).str();
-      auto C = CGM.GetAddrOfConstantCString(Name, GVName.c_str());
+      auto C = CGM.GetAddrOfConstantCString(Name, GVName.c_str(), AS);
       return MakeAddrLValue(C, E->getType(), AlignmentSource::Decl);
     } else {
-      auto C = CGM.GetAddrOfConstantCString(FnName, GVName.c_str());
+      auto C = CGM.GetAddrOfConstantCString(FnName, GVName.c_str(), AS);
       return MakeAddrLValue(C, E->getType(), AlignmentSource::Decl);
     }
   }

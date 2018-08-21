@@ -6489,7 +6489,7 @@ void Sema::CheckExplicitlyDefaultedSpecialMember(CXXMethodDecl *MD) {
     // Check for return type matching.
     ReturnType = Type->getReturnType();
     QualType ExpectedReturnType =
-        Context.getLValueReferenceType(Context.getTypeDeclType(RD));
+        Context.getLValueReferenceType(Context.getTypeDeclType(RD), true, true);
     if (!Context.hasSameType(ReturnType, ExpectedReturnType)) {
       Diag(MD->getLocation(), diag::err_defaulted_special_member_return_type)
         << (CSM == CXXMoveAssignment) << ExpectedReturnType;
@@ -11739,11 +11739,11 @@ CXXMethodDecl *Sema::DeclareImplicitCopyAssignment(CXXRecordDecl *ClassDecl) {
     return nullptr;
 
   QualType ArgType = Context.getTypeDeclType(ClassDecl);
-  QualType RetType = Context.getLValueReferenceType(ArgType);
+  QualType RetType = Context.getLValueReferenceType(ArgType, true, true);
   bool Const = ClassDecl->implicitCopyAssignmentHasConstParam();
   if (Const)
     ArgType = ArgType.withConst();
-  ArgType = Context.getLValueReferenceType(ArgType);
+  ArgType = Context.getLValueReferenceType(ArgType, true, true);
 
   bool Constexpr = defaultedSpecialMemberIsConstexpr(*this, ClassDecl,
                                                      CXXCopyAssignment,
@@ -12063,8 +12063,8 @@ CXXMethodDecl *Sema::DeclareImplicitMoveAssignment(CXXRecordDecl *ClassDecl) {
   // constructor rules.
 
   QualType ArgType = Context.getTypeDeclType(ClassDecl);
-  QualType RetType = Context.getLValueReferenceType(ArgType);
-  ArgType = Context.getRValueReferenceType(ArgType);
+  QualType RetType = Context.getLValueReferenceType(ArgType, true, true);
+  ArgType = Context.getRValueReferenceType(ArgType, true);
 
   bool Constexpr = defaultedSpecialMemberIsConstexpr(*this, ClassDecl,
                                                      CXXMoveAssignment,
@@ -12439,7 +12439,7 @@ CXXConstructorDecl *Sema::DeclareImplicitCopyConstructor(
   bool Const = ClassDecl->implicitCopyConstructorHasConstParam();
   if (Const)
     ArgType = ArgType.withConst();
-  ArgType = Context.getLValueReferenceType(ArgType);
+  ArgType = Context.getLValueReferenceType(ArgType, true, true);
 
   bool Constexpr = defaultedSpecialMemberIsConstexpr(*this, ClassDecl,
                                                      CXXCopyConstructor,
@@ -12568,7 +12568,7 @@ CXXConstructorDecl *Sema::DeclareImplicitMoveConstructor(
     return nullptr;
 
   QualType ClassType = Context.getTypeDeclType(ClassDecl);
-  QualType ArgType = Context.getRValueReferenceType(ClassType);
+  QualType ArgType = Context.getRValueReferenceType(ClassType, true);
 
   bool Constexpr = defaultedSpecialMemberIsConstexpr(*this, ClassDecl,
                                                      CXXMoveConstructor,
@@ -13195,7 +13195,7 @@ CheckOperatorDeleteDeclaration(Sema &SemaRef, FunctionDecl *FnDecl) {
   CanQualType ExpectedFirstParamType =
       MD && MD->isDestroyingOperatorDelete()
           ? SemaRef.Context.getCanonicalType(SemaRef.Context.getPointerType(
-                SemaRef.Context.getRecordType(MD->getParent())))
+                SemaRef.Context.getRecordType(MD->getParent()), true))
           : SemaRef.Context.VoidPtrTy;
 
   // C++ [basic.stc.dynamic.deallocation]p2:

@@ -4316,9 +4316,10 @@ CodeGenModule::GetConstantArrayFromStringLiteral(const StringLiteral *E) {
 static llvm::GlobalVariable *
 GenerateStringLiteral(llvm::Constant *C, llvm::GlobalValue::LinkageTypes LT,
                       CodeGenModule &CGM, StringRef GlobalName,
-                      CharUnits Alignment) {
-  unsigned AddrSpace = CGM.getContext().getTargetAddressSpace(
-      CGM.getStringLiteralAddressSpace());
+                      CharUnits Alignment, LangAS AS) {
+  if (CGM.getStringLiteralAddressSpace() != LangAS::Default)
+    AS = CGM.getStringLiteralAddressSpace();
+  unsigned AddrSpace = CGM.getContext().getTargetAddressSpace(AS);
 
   llvm::Module &M = CGM.getModule();
   // Create a global variable for this string
@@ -4372,7 +4373,10 @@ CodeGenModule::GetAddrOfConstantStringFromLiteral(const StringLiteral *S,
     GlobalVariableName = Name;
   }
 
-  auto GV = GenerateStringLiteral(C, LT, *this, GlobalVariableName, Alignment);
+  auto GV = GenerateStringLiteral(
+      C, LT, *this, GlobalVariableName, Alignment,
+      Context.getAsConstantArrayType(
+          S->getType())->getElementType().getAddressSpace());
   if (Entry)
     *Entry = GV;
 
@@ -4397,7 +4401,7 @@ CodeGenModule::GetAddrOfConstantStringFromObjCEncode(const ObjCEncodeExpr *E) {
 /// the literal and a terminating '\0' character.
 /// The result has pointer to array type.
 ConstantAddress CodeGenModule::GetAddrOfConstantCString(
-    const std::string &Str, const char *GlobalName) {
+    const std::string &Str, const char *GlobalName, LangAS AS) {
   StringRef StrWithNull(Str.c_str(), Str.size() + 1);
   CharUnits Alignment =
     getContext().getAlignOfGlobalVarInChars(getContext().CharTy);
@@ -4421,7 +4425,7 @@ ConstantAddress CodeGenModule::GetAddrOfConstantCString(
     GlobalName = ".str";
   // Create a global variable for this.
   auto GV = GenerateStringLiteral(C, llvm::GlobalValue::PrivateLinkage, *this,
-                                  GlobalName, Alignment);
+                                  GlobalName, Alignment, AS);
   if (Entry)
     *Entry = GV;
 
