@@ -793,6 +793,10 @@ void Sema::ActOnPragmaDefaultAS(SourceLocation Loc, PragmaMsStackAction Action,
   Context.DefaultAddrSpace = AddrSpaceStack.CurrentValue;
 }
 
+void Sema::ActOnPragmaPtr32CallSeg(uint16_t Selector) {
+  Ptr32CallSegSelector = Selector;
+}
+
 
 void Sema::PushNamespaceVisibilityAttr(const VisibilityAttr *Attr,
                                        SourceLocation Loc) {
