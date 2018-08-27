@@ -6374,17 +6374,32 @@ static bool handleMSPointerTypeQualifierAttr(TypeProcessingState &State,
       PointeeTy = S.Context.removeAddrSpaceQualType(PointeeTy);
       ChangedType = true;
     }
+    // If we have a custom segment selector for 32-bit calls, apply that now.
+    if (NewAttrKind == attr::Ptr32 && PointeeTy->isFunctionType() &&
+        S.Ptr32CallSegSelector != 0) {
+      PointeeTy = S.Context.getBasedSegmentQualType(
+          PointeeTy, S.Ptr32CallSegSelector);
+      ChangedType = true;
+    }
     if (ChangedType) {
       QualType NewTy = S.Context.getPointerType(PointeeTy);
       // Unfortunately, the type might've been wrapped in several layers of
       // AttributedType. We'll have to build those layers back up manually.
       const AttributedType *AT = dyn_cast<AttributedType>(Type);
       while (AT) {
-        AttributedType::Kind CurAttrKind = AT->getAttrKind();
-        NewTy = S.Context.getAttributedType(CurAttrKind, NewTy, NewTy);
+        Attr *A = const_cast<Attr *>(State.takeAttrForAttributedType(AT));
+        NewTy = State.getAttributedType(A, NewTy, NewTy);
         AT = dyn_cast<AttributedType>(AT->getEquivalentType());
       }
       Type = NewTy;
+    }
+    // If we have a custom segment selector for 32-bit calls, apply that now.
+    if (NewAttrKind == attr::Ptr32 && PointeeTy->isFunctionType() &&
+        S.Ptr32CallSegSelector != 0) {
+      auto *SegAttr = new (S.Context)
+          Ptr32CallSegAttr(PAttr.getRange(), S.Context, 0,
+                           S.Ptr32CallSegSelector);
+      Type = State.getAttributedType(SegAttr, Type, Type);
     }
   }
 

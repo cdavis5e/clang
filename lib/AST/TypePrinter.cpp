@@ -38,6 +38,7 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/SaveAndRestore.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
@@ -1409,6 +1410,7 @@ void TypePrinter::printAttributedAfter(const AttributedType *T,
   // Some attributes are printed as qualifiers before the type, so we have
   // nothing left to do.
   if (T->getAttrKind() == attr::ObjCKindOf ||
+      T->getAttrKind() == attr::Ptr32CallSeg ||
       T->isMSTypeSpec() || T->getImmediateNullability())
     return;
 
@@ -1463,6 +1465,7 @@ void TypePrinter::printAttributedAfter(const AttributedType *T,
   case attr::SPtr:
   case attr::UPtr:
   case attr::AddressSpace:
+  case attr::Ptr32CallSeg:
     llvm_unreachable("This attribute should have been handled already");
 
   case attr::NSReturnsRetained:
@@ -1758,6 +1761,12 @@ void Qualifiers::print(raw_ostream &OS, const PrintingPolicy& Policy,
         OS << ")))";
       }
     }
+  }
+  if (uint16_t SegSel = getBasedSegment()) {
+    if (addSpace)
+      OS << ' ';
+    addSpace = true;
+    OS << llvm::formatv("__based((__segment)0x{x4}) ", SegSel);
   }
   if (Qualifiers::GC gc = getObjCGCAttr()) {
     if (addSpace)

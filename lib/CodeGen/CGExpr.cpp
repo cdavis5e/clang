@@ -29,6 +29,7 @@
 #include "clang/Frontend/CodeGenOptions.h"
 #include "llvm/ADT/Hashing.h"
 #include "llvm/ADT/StringExtras.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/LLVMContext.h"
@@ -4768,7 +4769,17 @@ RValue CodeGenFunction::EmitCall(QualType CalleeType, const CGCallee &OrigCallee
     Callee.setFunctionPointer(CalleePtr);
   }
 
-  return EmitCall(FnInfo, Callee, ReturnValue, Args, nullptr, E->getExprLoc());
+  llvm::Instruction *CI;
+  RValue RV = EmitCall(FnInfo, Callee, ReturnValue, Args, &CI, E->getExprLoc());
+  if (uint16_t Ptr32CallSeg = PointeeType.getBasedSegment()) {
+    llvm::CallSite CS(CI);
+    CS.addAttribute(llvm::AttributeList::FunctionIndex,
+                    llvm::Attribute::get(
+                        CGM.getLLVMContext(), "based-far-segment",
+                        (llvm::Twine("0x") +
+                         llvm::utohexstr(Ptr32CallSeg)).str()));
+  }
+  return RV;
 }
 
 LValue CodeGenFunction::

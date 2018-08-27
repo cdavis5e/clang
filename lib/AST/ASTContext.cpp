@@ -2627,6 +2627,26 @@ QualType ASTContext::removeAddrSpaceQualType(QualType T) const {
     return QualType(TypeNode, Quals.getFastQualifiers());
 }
 
+QualType ASTContext::getBasedSegmentQualType(QualType T,
+                                             uint16_t SegSelector) const {
+  QualType CanT = getCanonicalType(T);
+  if (CanT.getBasedSegment() == SegSelector)
+    return T;
+
+  // If we are composing extended qualifiers together, merge together
+  // into one ExtQuals node.
+  QualifierCollector Quals;
+  const Type *TypeNode = Quals.strip(T);
+
+  // If this type already has a target segment specified, it cannot get
+  // another one.
+  assert(!Quals.hasBasedSegment() &&
+         "Type cannot have multiple target segments!");
+  Quals.addBasedSegment(SegSelector);
+
+  return getExtQualType(TypeNode, Quals);
+}
+
 QualType ASTContext::getObjCGCQualType(QualType T,
                                        Qualifiers::GC GCAttr) const {
   QualType CanT = getCanonicalType(T);
@@ -8642,6 +8662,7 @@ QualType ASTContext::mergeTypes(QualType LHS, QualType RHS,
     if (LQuals.getCVRQualifiers() != RQuals.getCVRQualifiers() ||
         LQuals.getAddressSpace() != RQuals.getAddressSpace() ||
         LQuals.getObjCLifetime() != RQuals.getObjCLifetime() ||
+        LQuals.getBasedSegment() != RQuals.getBasedSegment() ||
         LQuals.hasUnaligned() != RQuals.hasUnaligned())
       return {};
 
@@ -8773,9 +8794,9 @@ QualType ASTContext::mergeTypes(QualType LHS, QualType RHS,
       LHSPteeQual.removeAddressSpace();
       RHSPteeQual.removeAddressSpace();
       LHSPointee =
-          QualType(LHSPointee.getTypePtr(), LHSPteeQual.getAsOpaqueValue());
+          QualType(LHSPointee.getTypePtr(), LHSPteeQual.getFastQualifiers());
       RHSPointee =
-          QualType(RHSPointee.getTypePtr(), RHSPteeQual.getAsOpaqueValue());
+          QualType(RHSPointee.getTypePtr(), RHSPteeQual.getFastQualifiers());
     }
     QualType ResultType = mergeTypes(LHSPointee, RHSPointee, OfBlockPointer,
                                      Unqualified);
@@ -9027,7 +9048,8 @@ QualType ASTContext::mergeObjCGCQualifiers(QualType LHS, QualType RHS) {
   if (LQuals != RQuals) {
     // If any of these qualifiers are different, we have a type mismatch.
     if (LQuals.getCVRQualifiers() != RQuals.getCVRQualifiers() ||
-        LQuals.getAddressSpace() != RQuals.getAddressSpace())
+        LQuals.getAddressSpace() != RQuals.getAddressSpace() ||
+        LQuals.getBasedSegment() != RQuals.getBasedSegment())
       return {};
 
     // Exactly one GC qualifier difference is allowed: __strong is
