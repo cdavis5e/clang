@@ -4295,6 +4295,22 @@ static void handleCallConvAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
     D->addAttr(::new (S.Context) PreserveAllAttr(
         AL.getRange(), S.Context, AL.getAttributeSpellingListIndex()));
     return;
+  case ParsedAttr::AT_FastCall32:
+    D->addAttr(::new (S.Context) FastCall32Attr(
+        AL.getRange(), S.Context, AL.getAttributeSpellingListIndex()));
+    return;
+  case ParsedAttr::AT_StdCall32:
+    D->addAttr(::new (S.Context) StdCall32Attr(
+        AL.getRange(), S.Context, AL.getAttributeSpellingListIndex()));
+    return;
+  case ParsedAttr::AT_ThisCall32:
+    D->addAttr(::new (S.Context) ThisCall32Attr(
+        AL.getRange(), S.Context, AL.getAttributeSpellingListIndex()));
+    return;
+  case ParsedAttr::AT_CDecl32:
+    D->addAttr(::new (S.Context) CDecl32Attr(
+        AL.getRange(), S.Context, AL.getAttributeSpellingListIndex()));
+    return;
   default:
     llvm_unreachable("unexpected attribute kind");
   }
@@ -4396,6 +4412,18 @@ bool Sema::CheckCallingConvAttr(const ParsedAttr &Attrs, CallingConv &CC,
     break;
   case ParsedAttr::AT_PreserveAll:
     CC = CC_PreserveAll;
+    break;
+  case ParsedAttr::AT_CDecl32:
+    CC = CC_X86C32;
+    break;
+  case ParsedAttr::AT_FastCall32:
+    CC = CC_X86FastCall32;
+    break;
+  case ParsedAttr::AT_StdCall32:
+    CC = CC_X86StdCall32;
+    break;
+  case ParsedAttr::AT_ThisCall32:
+    CC = CC_X86ThisCall32;
     break;
   default: llvm_unreachable("unexpected attribute kind");
   }
@@ -6486,6 +6514,10 @@ static void ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D,
   case ParsedAttr::AT_IntelOclBicc:
   case ParsedAttr::AT_PreserveMost:
   case ParsedAttr::AT_PreserveAll:
+  case ParsedAttr::AT_StdCall32:
+  case ParsedAttr::AT_CDecl32:
+  case ParsedAttr::AT_FastCall32:
+  case ParsedAttr::AT_ThisCall32:
     handleCallConvAttr(S, D, AL);
     break;
   case ParsedAttr::AT_Suppress:

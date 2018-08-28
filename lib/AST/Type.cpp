@@ -2828,6 +2828,10 @@ StringRef FunctionType::getNameForCallConv(CallingConv CC) {
   case CC_Swift: return "swiftcall";
   case CC_PreserveMost: return "preserve_most";
   case CC_PreserveAll: return "preserve_all";
+  case CC_X86C32: return "cdecl32";
+  case CC_X86StdCall32: return "stdcall32";
+  case CC_X86FastCall32: return "fastcall32";
+  case CC_X86ThisCall32: return "thiscall32";
   }
 
   llvm_unreachable("Invalid calling convention.");
@@ -3220,6 +3224,10 @@ bool AttributedType::isCallingConv() const {
   case attr::IntelOclBicc:
   case attr::PreserveMost:
   case attr::PreserveAll:
+  case attr::CDecl32:
+  case attr::FastCall32:
+  case attr::StdCall32:
+  case attr::ThisCall32:
     return true;
   }
   llvm_unreachable("invalid attr kind");

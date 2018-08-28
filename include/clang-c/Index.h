@@ -32,7 +32,7 @@
  * compatible, thus CINDEX_VERSION_MAJOR is expected to remain stable.
  */
 #define CINDEX_VERSION_MAJOR 0
-#define CINDEX_VERSION_MINOR 50
+#define CINDEX_VERSION_MINOR 51
 
 #define CINDEX_VERSION_ENCODE(major, minor) ( \
       ((major) * 10000)                       \
@@ -3322,6 +3322,10 @@ enum CXCallingConv {
   CXCallingConv_Swift = 13,
   CXCallingConv_PreserveMost = 14,
   CXCallingConv_PreserveAll = 15,
+  CXCallingConv_X86C32 = 16,
+  CXCallingConv_X86StdCall32 = 17,
+  CXCallingConv_X86FastCall32 = 18,
+  CXCallingConv_X86ThisCall32 = 19,
 
   CXCallingConv_Invalid = 100,
   CXCallingConv_Unexposed = 200

@@ -790,6 +790,13 @@ def CDecl : DeclOrTypeAttr {
   let Documentation = [Undocumented];
 }
 
+def CDecl32 : DeclOrTypeAttr {
+  let Spellings = [Clang<"cdecl32">];
+//  let Subjects = [Function, ObjCMethod];
+  let LangOpts = [Interop6432];
+  let Documentation = [CallingConv32Docs];
+}
+
 // cf_audited_transfer indicates that the given function has been
 // audited and has been marked with the appropriate cf_consumed and
 // cf_returns_retained attributes.  It is generally applied by
@@ -1115,6 +1122,13 @@ def FastCall : DeclOrTypeAttr {
                    Keyword<"_fastcall">];
 //  let Subjects = [Function, ObjCMethod];
   let Documentation = [FastCallDocs];
+}
+
+def FastCall32 : DeclOrTypeAttr {
+  let Spellings = [Clang<"fastcall32">];
+//  let Subjects = [Function, ObjCMethod];
+  let LangOpts = [Interop6432];
+  let Documentation = [CallingConv32Docs];
 }
 
 def RegCall : DeclOrTypeAttr {
@@ -1896,6 +1910,13 @@ def StdCall : DeclOrTypeAttr {
   let Documentation = [StdCallDocs];
 }
 
+def StdCall32 : DeclOrTypeAttr {
+  let Spellings = [Clang<"stdcall32">];
+//  let Subjects = [Function, ObjCMethod];
+  let LangOpts = [Interop6432];
+  let Documentation = [CallingConv32Docs];
+}
+
 def SwiftCall : DeclOrTypeAttr {
   let Spellings = [Clang<"swiftcall">];
 //  let Subjects = SubjectList<[Function]>;
@@ -1934,6 +1955,13 @@ def ThisCall : DeclOrTypeAttr {
                    Keyword<"_thiscall">];
 //  let Subjects = [Function, ObjCMethod];
   let Documentation = [ThisCallDocs];
+}
+
+def ThisCall32 : DeclOrTypeAttr {
+  let Spellings = [Clang<"thiscall32">];
+//  let Subjects = [Function, ObjCMethod];
+  let LangOpts = [Interop6432];
+  let Documentation = [CallingConv32Docs];
 }
 
 def VectorCall : DeclOrTypeAttr {

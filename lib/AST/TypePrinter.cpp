@@ -887,6 +887,18 @@ void TypePrinter::printFunctionAfter(const FunctionType::ExtInfo &Info,
     case CC_PreserveAll:
       OS << " __attribute__((preserve_all))";
       break;
+    case CC_X86C32:
+      OS << " __attribute__((cdecl32))";
+      break;
+    case CC_X86StdCall32:
+      OS << " __attribute__((stdcall32))";
+      break;
+    case CC_X86FastCall32:
+      OS << " __attribute__((fastcall32))";
+      break;
+    case CC_X86ThisCall32:
+      OS << " __attribute__((thiscall32))";
+      break;
     }
   }
 
@@ -1485,6 +1497,10 @@ void TypePrinter::printAttributedAfter(const AttributedType *T,
   case attr::MSABI: OS << "ms_abi"; break;
   case attr::SysVABI: OS << "sysv_abi"; break;
   case attr::RegCall: OS << "regcall"; break;
+  case attr::CDecl32: OS << "cdecl32"; break;
+  case attr::FastCall32: OS << "fastcall32"; break;
+  case attr::StdCall32: OS << "stdcall32"; break;
+  case attr::ThisCall32: OS << "thiscall32"; break;
   case attr::Pcs: {
     OS << "pcs(";
    QualType t = T->getEquivalentType();

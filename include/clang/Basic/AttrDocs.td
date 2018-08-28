@@ -3604,3 +3604,14 @@ GNU inline semantics are the default behavior with ``-std=gnu89``,
 ``-std=c89``, ``-std=c94``, or ``-fgnu89-inline``.
   }];
 }
+
+def CallingConv32Docs : Documentation {
+  let Category = DocCatCallingConvs;
+  let Content = [{
+This attribute is similar to its unsuffixed counterpart, only it applies in
+64-bit mode as well. In addition, it also marks this function as using a
+32-bit calling convention. This calling convention may only be used when
+64-32 interop has been enabled.
+  }];
+}
+

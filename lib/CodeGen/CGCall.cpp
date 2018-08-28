@@ -46,10 +46,13 @@ using namespace CodeGen;
 unsigned CodeGenTypes::ClangCallConvToLLVMCallConv(CallingConv CC) {
   switch (CC) {
   default: return llvm::CallingConv::C;
-  case CC_X86StdCall: return llvm::CallingConv::X86_StdCall;
-  case CC_X86FastCall: return llvm::CallingConv::X86_FastCall;
+  case CC_X86StdCall:
+  case CC_X86StdCall32: return llvm::CallingConv::X86_StdCall;
+  case CC_X86FastCall:
+  case CC_X86FastCall32: return llvm::CallingConv::X86_FastCall;
   case CC_X86RegCall: return llvm::CallingConv::X86_RegCall;
-  case CC_X86ThisCall: return llvm::CallingConv::X86_ThisCall;
+  case CC_X86ThisCall:
+  case CC_X86ThisCall32: return llvm::CallingConv::X86_ThisCall;
   case CC_Win64: return llvm::CallingConv::Win64;
   case CC_X86_64SysV: return llvm::CallingConv::X86_64_SysV;
   case CC_AAPCS: return llvm::CallingConv::ARM_AAPCS;
@@ -64,6 +67,7 @@ unsigned CodeGenTypes::ClangCallConvToLLVMCallConv(CallingConv CC) {
   case CC_PreserveMost: return llvm::CallingConv::PreserveMost;
   case CC_PreserveAll: return llvm::CallingConv::PreserveAll;
   case CC_Swift: return llvm::CallingConv::Swift;
+  case CC_X86C32: return llvm::CallingConv::X86_64_C32;
   }
 }
 
@@ -228,6 +232,18 @@ static CallingConv getCallingConventionForDecl(const Decl *D, bool IsWindows) {
 
   if (D->hasAttr<PreserveAllAttr>())
     return CC_PreserveAll;
+
+  if (D->hasAttr<StdCall32Attr>())
+    return CC_X86StdCall32;
+
+  if (D->hasAttr<FastCall32Attr>())
+    return CC_X86FastCall32;
+
+  if (D->hasAttr<ThisCall32Attr>())
+    return CC_X86ThisCall32;
+
+  if (D->hasAttr<CDecl32Attr>())
+    return CC_X86C32;
 
   return CC_C;
 }

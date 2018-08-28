@@ -121,7 +121,11 @@ static void diagnoseBadTypeAttribute(Sema &S, const ParsedAttr &attr,
   case ParsedAttr::AT_Pcs:                                                     \
   case ParsedAttr::AT_IntelOclBicc:                                            \
   case ParsedAttr::AT_PreserveMost:                                            \
-  case ParsedAttr::AT_PreserveAll
+  case ParsedAttr::AT_PreserveAll:                                             \
+  case ParsedAttr::AT_CDecl32:                                                 \
+  case ParsedAttr::AT_StdCall32:                                               \
+  case ParsedAttr::AT_FastCall32:                                              \
+  case ParsedAttr::AT_ThisCall32
 
 // Function type attributes.
 #define FUNCTION_TYPE_ATTRS_CASELIST                                           \
@@ -6726,6 +6730,14 @@ static Attr *getCCTypeAttr(ASTContext &Ctx, ParsedAttr &Attr) {
     return createSimpleAttr<PreserveMostAttr>(Ctx, Attr);
   case ParsedAttr::AT_PreserveAll:
     return createSimpleAttr<PreserveAllAttr>(Ctx, Attr);
+  case ParsedAttr::AT_CDecl32:
+    return createSimpleAttr<CDecl32Attr>(Ctx, Attr);
+  case ParsedAttr::AT_FastCall32:
+    return createSimpleAttr<FastCall32Attr>(Ctx, Attr);
+  case ParsedAttr::AT_StdCall32:
+    return createSimpleAttr<StdCall32Attr>(Ctx, Attr);
+  case ParsedAttr::AT_ThisCall32:
+    return createSimpleAttr<ThisCall32Attr>(Ctx, Attr);
   }
   llvm_unreachable("unexpected attribute kind!");
 }
@@ -6826,7 +6838,7 @@ static bool handleFunctionTypeAttr(TypeProcessingState &state, ParsedAttr &attr,
     // Diagnose regparm with fastcall.
     const FunctionType *fn = unwrapped.get();
     CallingConv CC = fn->getCallConv();
-    if (CC == CC_X86FastCall) {
+    if (CC == CC_X86FastCall || CC == CC_X86FastCall32) {
       S.Diag(attr.getLoc(), diag::err_attributes_are_not_compatible)
         << FunctionType::getNameForCallConv(CC)
         << "regparm";
@@ -6879,21 +6891,26 @@ static bool handleFunctionTypeAttr(TypeProcessingState &state, ParsedAttr &attr,
       // stdcall and fastcall are ignored with a warning for GCC and MS
       // compatibility.
       bool IsInvalid = true;
-      if (CC == CC_X86StdCall || CC == CC_X86FastCall) {
+      if (CC == CC_X86StdCall || CC == CC_X86FastCall ||
+          CC == CC_X86StdCall32 || CC == CC_X86FastCall32) {
         DiagID = diag::warn_cconv_varargs;
         IsInvalid = false;
       }
 
       S.Diag(attr.getLoc(), DiagID) << FunctionType::getNameForCallConv(CC);
       if (IsInvalid) attr.setInvalid();
-      return true;
+      // For the 32-bit compatible conventions, use the 32-bit C convention.
+      if (CC == CC_X86StdCall32 || CC == CC_X86FastCall32)
+        CC = CC_X86C32;
+      else
+        return true;
     }
   }
 
   // Also diagnose fastcall with regparm.
-  if (CC == CC_X86FastCall && fn->getHasRegParm()) {
+  if ((CC == CC_X86FastCall || CC == CC_X86FastCall32) && fn->getHasRegParm()) {
     S.Diag(attr.getLoc(), diag::err_attributes_are_not_compatible)
-        << "regparm" << FunctionType::getNameForCallConv(CC_X86FastCall);
+        << "regparm" << FunctionType::getNameForCallConv(CC);
     attr.setInvalid();
     return true;
   }
@@ -6940,7 +6957,7 @@ void Sema::adjustMemberFunctionCC(QualType &T, bool IsStatic, bool IsCtorOrDtor,
   if (Context.getTargetInfo().getCXXABI().isMicrosoft() && IsCtorOrDtor) {
     // Issue a warning on ignored calling convention -- except of __stdcall.
     // Again, this is what MS compiler does.
-    if (CurCC != CC_X86StdCall)
+    if (CurCC != CC_X86StdCall && CurCC != CC_X86StdCall32)
       Diag(Loc, diag::warn_cconv_structors)
           << FunctionType::getNameForCallConv(CurCC);
   // Default adjustment.

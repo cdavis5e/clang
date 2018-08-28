@@ -251,6 +251,10 @@ namespace clang {
     CC_Swift,        // __attribute__((swiftcall))
     CC_PreserveMost, // __attribute__((preserve_most))
     CC_PreserveAll,  // __attribute__((preserve_all))
+    CC_X86C32,        // __attribute__((cdecl32))
+    CC_X86StdCall32,  // __attribute__((stdcall32))
+    CC_X86FastCall32, // __attribute__((fastcall32))
+    CC_X86ThisCall32, // __attribute__((thiscall32))
   };
 
   /// Checks whether the given calling convention supports variadic
@@ -266,6 +270,9 @@ namespace clang {
     case CC_SpirFunction:
     case CC_OpenCLKernel:
     case CC_Swift:
+    case CC_X86StdCall32:
+    case CC_X86FastCall32:
+    case CC_X86ThisCall32:
       return false;
     default:
       return true;

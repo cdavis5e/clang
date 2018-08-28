@@ -1919,7 +1919,8 @@ Address X86_32ABIInfo::EmitVAArg(CodeGenFunction &CGF,
 
 bool X86_32TargetCodeGenInfo::isStructReturnInRegABI(
     const llvm::Triple &Triple, const CodeGenOptions &Opts) {
-  assert(Triple.getArch() == llvm::Triple::x86);
+  assert(Triple.getArch() == llvm::Triple::x86 ||
+         Triple.getArch() == llvm::Triple::x86_64);
 
   switch (Opts.getStructReturnConvention()) {
   case CodeGenOptions::SRCK_Default:
@@ -2163,13 +2164,28 @@ class X86_64ABIInfo : public SwiftABIInfo {
 
   bool IsWin64;
   bool IsMingw64;
+  bool IsWine32;
+
+  std::unique_ptr<X86_32ABIInfo> ABI32;
 
 public:
   X86_64ABIInfo(CodeGen::CodeGenTypes &CGT, X86AVXABILevel AVXLevel) :
       SwiftABIInfo(CGT), AVXLevel(AVXLevel),
       Has64BitPointers(CGT.getDataLayout().getPointerSize(0) == 8),
       IsWin64(getTarget().getTriple().isOSWindows()),
-      IsMingw64(getTarget().getTriple().isWindowsGNUEnvironment()) {
+      IsMingw64(getTarget().getTriple().isWindowsGNUEnvironment()),
+      IsWine32(getTarget().getTriple().getEnvironment()==llvm::Triple::Wine32) {
+    if (IsWine32) {
+      const auto &Triple = getTarget().getTriple();
+      ABI32 = llvm::make_unique<X86_32ABIInfo>(
+          CGT, getTarget().getTriple().isOSDarwin(),
+          X86_32TargetCodeGenInfo::isStructReturnInRegABI(
+              Triple, CGT.getCodeGenOpts()),
+          Triple.isOSWindows() && Triple.isOSBinFormatCOFF() &&
+          !Triple.isOSCygMing(),
+          CGT.getCodeGenOpts().NumRegisterParameters,
+          CGT.getCodeGenOpts().FloatABI == "soft");
+    }
   }
 
   bool isPassedUsingAVXType(QualType type) const {
@@ -3535,12 +3551,26 @@ static bool isWin64CC(CGFunctionInfo &FI, bool IsWin64Target) {
      FI.getCallingConvention() != llvm::CallingConv::X86_64_SysV);
 }
 
+static bool is32BitInteropCC(CGFunctionInfo &FI, bool IsWine32Target) {
+  return FI.getCallingConvention() == llvm::CallingConv::X86_64_C32 ||
+    (IsWine32Target &&
+     (FI.getCallingConvention() == llvm::CallingConv::X86_StdCall ||
+      FI.getCallingConvention() == llvm::CallingConv::X86_FastCall ||
+      FI.getCallingConvention() == llvm::CallingConv::X86_ThisCall));
+}
+
 void X86_64ABIInfo::computeInfo(CGFunctionInfo &FI) const {
 
   const unsigned CallingConv = FI.getCallingConvention();
 
   if (isWin64CC(FI, IsWin64)) {
     computeInfoWin64(FI);
+    return;
+  }
+
+  if (is32BitInteropCC(FI, IsWine32)) {
+    assert(ABI32 != nullptr && "Need 32-bit ABI Info!");
+    ABI32->computeInfo(FI);
     return;
   }
 

@@ -1079,11 +1079,16 @@ static unsigned getDwarfCC(CallingConv CC) {
     // Avoid emitting DW_AT_calling_convention if the C convention was used.
     return 0;
 
+  case CC_X86C32:
+    return llvm::dwarf::DW_CC_LLVM_C32;
   case CC_X86StdCall:
+  case CC_X86StdCall32:
     return llvm::dwarf::DW_CC_BORLAND_stdcall;
   case CC_X86FastCall:
+  case CC_X86FastCall32:
     return llvm::dwarf::DW_CC_BORLAND_msfastcall;
   case CC_X86ThisCall:
+  case CC_X86ThisCall32:
     return llvm::dwarf::DW_CC_BORLAND_thiscall;
   case CC_X86VectorCall:
     return llvm::dwarf::DW_CC_LLVM_vectorcall;

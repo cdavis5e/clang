@@ -2281,10 +2281,14 @@ void MicrosoftCXXNameMangler::mangleCallingConvention(CallingConv CC) {
     case CC_Win64:
     case CC_X86_64SysV:
     case CC_C: Out << 'A'; break;
+    case CC_X86C32: Out << 'A'; break;
     case CC_X86Pascal: Out << 'C'; break;
     case CC_X86ThisCall: Out << 'E'; break;
+    case CC_X86ThisCall32: Out << 'E'; break;
     case CC_X86StdCall: Out << 'G'; break;
+    case CC_X86StdCall32: Out << 'G'; break;
     case CC_X86FastCall: Out << 'I'; break;
+    case CC_X86FastCall32: Out << 'I'; break;
     case CC_X86VectorCall: Out << 'Q'; break;
     case CC_Swift: Out << 'S'; break;
     case CC_PreserveMost: Out << 'U'; break;

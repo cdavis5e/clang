@@ -667,6 +667,13 @@ public:
     case CC_X86RegCall:
     case CC_OpenCLKernel:
       return CCCR_OK;
+    case CC_X86C32:
+    case CC_X86StdCall32:
+    case CC_X86FastCall32:
+    case CC_X86ThisCall32:
+      if (getTriple().getEnvironment() == llvm::Triple::Wine32)
+        return CCCR_OK;
+      LLVM_FALLTHROUGH;
     default:
       return CCCR_Warning;
     }
@@ -749,6 +756,13 @@ public:
     case CC_X86RegCall:
     case CC_OpenCLKernel:
       return CCCR_OK;
+    case CC_X86C32:
+    case CC_X86StdCall32:
+    case CC_X86FastCall32:
+    case CC_X86ThisCall32:
+      if (getTriple().getEnvironment() == llvm::Triple::Wine32)
+        return CCCR_OK;
+      LLVM_FALLTHROUGH;
     default:
       return CCCR_Warning;
     }

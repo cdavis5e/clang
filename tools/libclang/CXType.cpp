@@ -655,6 +655,10 @@ CXCallingConv clang_getFunctionTypeCallingConv(CXType X) {
       TCALLINGCONV(Swift);
       TCALLINGCONV(PreserveMost);
       TCALLINGCONV(PreserveAll);
+      TCALLINGCONV(X86C32);
+      TCALLINGCONV(X86StdCall32);
+      TCALLINGCONV(X86FastCall32);
+      TCALLINGCONV(X86ThisCall32);
     case CC_SpirFunction: return CXCallingConv_Unexposed;
     case CC_OpenCLKernel: return CXCallingConv_Unexposed;
       break;

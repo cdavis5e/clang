@@ -2675,6 +2675,10 @@ StringRef CXXNameMangler::getCallingConvQualifierName(CallingConv CC) {
   case CC_OpenCLKernel:
   case CC_PreserveMost:
   case CC_PreserveAll:
+  case CC_X86C32:
+  case CC_X86StdCall32:
+  case CC_X86FastCall32:
+  case CC_X86ThisCall32:
     // FIXME: we should be mangling all of the above.
     return "";
 

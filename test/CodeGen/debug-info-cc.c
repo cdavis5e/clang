@@ -1,4 +1,5 @@
 // RUN: %clang_cc1 -triple x86_64-pc-linux-gnu -o - -emit-llvm -debug-info-kind=limited %s | FileCheck %s --check-prefix=LINUX
+// RUN: %clang_cc1 -triple x86_64-pc-linux-wine32 -o - -emit-llvm -debug-info-kind=limited %s | FileCheck %s --check-prefix=WINE32
 // RUN: %clang_cc1 -triple x86_64-unknown-windows-msvc -o - -emit-llvm -debug-info-kind=limited %s | FileCheck %s --check-prefix=WINDOWS
 // RUN: %clang_cc1 -triple i386-pc-linux-gnu -o - -emit-llvm -debug-info-kind=limited %s | FileCheck %s --check-prefix=LINUX32
 // RUN: %clang_cc1 -triple armv7--linux-gnueabihf -o - -emit-llvm -debug-info-kind=limited %s | FileCheck %s --check-prefix=ARM
@@ -21,6 +22,10 @@
 //    CC_Swift,        // __attribute__((swiftcall))
 //    CC_PreserveMost, // __attribute__((preserve_most))
 //    CC_PreserveAll,  // __attribute__((preserve_all))
+//    CC_X86C32,       // __attribute__((cdecl32))
+//    CC_X86StdCall32, // __attribute__((stdcall32))
+//    CC_X86FastCall32, // __attribute__((fastcall32))
+//    CC_X86ThisCall32, // __attribute__((thiscall32))
 //  };
 
 #ifdef __x86_64__
@@ -61,6 +66,33 @@ __attribute__((swiftcall)) int add_swiftcall(int a, int b) {
 __attribute__((intel_ocl_bicc)) int add_inteloclbicc(int a, int b) {
   return a+b;
 }
+
+#ifdef __i386_on_x86_64__
+// WINE32: !DISubprogram({{.*}}"add_cdecl32", {{.*}}type: ![[FTY:[0-9]+]]
+// WINE32: ![[FTY]] = !DISubroutineType({{.*}}cc: DW_CC_LLVM_C32,
+__attribute__((cdecl32)) int add_cdecl32(int a, int b) {
+  return a+b;
+}
+
+// WINE32: !DISubprogram({{.*}}"add_stdcall32", {{.*}}type: ![[FTY:[0-9]+]]
+// WINE32: ![[FTY]] = !DISubroutineType({{.*}}cc: DW_CC_BORLAND_stdcall,
+__attribute__((stdcall32)) int add_stdcall32(int a, int b) {
+  return a+b;
+}
+
+// WINE32: !DISubprogram({{.*}}"add_fastcall32", {{.*}}type: ![[FTY:[0-9]+]]
+// WINE32: ![[FTY]] = !DISubroutineType({{.*}}cc: DW_CC_BORLAND_msfastcall,
+__attribute__((fastcall32)) int add_fastcall32(int a, int b) {
+  return a+b;
+}
+
+// WINE32: !DISubprogram({{.*}}"add_thiscall32", {{.*}}type: ![[FTY:[0-9]+]]
+// WINE32: ![[FTY]] = !DISubroutineType({{.*}}cc: DW_CC_BORLAND_thiscall,
+__attribute__((thiscall32)) int add_thiscall32(int a, int b) {
+  return a+b;
+}
+#endif
+
 #endif
 
 #ifdef _WIN64
