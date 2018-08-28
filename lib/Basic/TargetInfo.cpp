@@ -110,6 +110,7 @@ TargetInfo::TargetInfo(const llvm::Triple &T) : TargetOpts(), Triple(T) {
   SSERegParmMax = 0;
   HasAlignMac68kSupport = false;
   HasBuiltinMSVaList = false;
+  HasBuiltinVaList32 = false;
   IsRenderScriptTarget = false;
 
   // Default to no types using fpret.

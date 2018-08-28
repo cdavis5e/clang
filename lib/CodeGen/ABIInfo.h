@@ -95,6 +95,12 @@ namespace swiftcall {
                                          CodeGen::Address VAListAddr,
                                          QualType Ty) const;
 
+    /// Emit the target dependent code to load a value of
+    /// \arg Ty from the \c __builtin_va_list32 pointed to by \arg VAListAddr.
+    virtual CodeGen::Address EmitVAArg32(CodeGen::CodeGenFunction &CGF,
+                                         CodeGen::Address VAListAddr,
+                                         QualType Ty) const;
+
     virtual bool isHomogeneousAggregateBaseType(QualType Ty) const;
 
     virtual bool isHomogeneousAggregateSmallEnough(const Type *Base,

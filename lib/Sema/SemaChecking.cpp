@@ -3441,6 +3441,9 @@ bool Sema::CheckX86BuiltinFunctionCall(unsigned BuiltinID, CallExpr *TheCall) {
   if (BuiltinID == X86::BI__builtin_cpu_is)
     return SemaBuiltinCpuIs(*this, TheCall);
 
+  if (BuiltinID == X86::BI__builtin_va_start32)
+    return SemaBuiltinVAStart(BuiltinID, TheCall);
+
   // Check for 32-bit only builtins on a 64-bit target.
   const llvm::Triple &TT = Context.getTargetInfo().getTriple();
   if (TT.getArch() != llvm::Triple::x86 && isX86_32Builtin(BuiltinID))
@@ -5178,6 +5181,11 @@ ExprResult Sema::CheckOSLogFormatStringArg(Expr *Arg) {
   return Result;
 }
 
+static bool is32BitABICallConv(CallingConv CC) {
+  return CC == CC_X86C32 || CC == CC_X86StdCall32 || CC == CC_X86FastCall32 ||
+    CC == CC_X86ThisCall32;
+}
+
 /// Check that the user is calling the appropriate va_start builtin for the
 /// target and calling convention.
 static bool checkVAStartABI(Sema &S, unsigned BuiltinID, Expr *Fn) {
@@ -5185,32 +5193,45 @@ static bool checkVAStartABI(Sema &S, unsigned BuiltinID, Expr *Fn) {
   bool IsX64 = TT.getArch() == llvm::Triple::x86_64;
   bool IsAArch64 = TT.getArch() == llvm::Triple::aarch64;
   bool IsWindows = TT.isOSWindows();
+  bool IsWine32 = TT.getEnvironment() == llvm::Triple::Wine32;
   bool IsMSVAStart = BuiltinID == Builtin::BI__builtin_ms_va_start;
+  bool IsVAStart32 = BuiltinID == X86::BI__builtin_va_start32;
   if (IsX64 || IsAArch64) {
     CallingConv CC = CC_C;
     if (const FunctionDecl *FD = S.getCurFunctionDecl())
       CC = FD->getType()->getAs<FunctionType>()->getCallConv();
     if (IsMSVAStart) {
-      // Don't allow this in System V ABI functions.
-      if (CC == CC_X86_64SysV || (!IsWindows && CC != CC_Win64))
+      // Don't allow this in System V or 32-bit ABI functions.
+      if (CC == CC_X86_64SysV || (!IsWindows && CC != CC_Win64) ||
+          is32BitABICallConv(CC))
         return S.Diag(Fn->getBeginLoc(),
-                      diag::err_ms_va_start_used_in_sysv_function);
+                      diag::err_ms_va_start_used_in_wrong_abi_function)
+               << is32BitABICallConv(CC);
+    } else if (IsVAStart32) {
+      // Don't allow this in 64-bit ABI functions.
+      if (!is32BitABICallConv(CC))
+        return S.Diag(Fn->getBeginLoc(),
+                      diag::err_va_start32_used_in_wrong_abi_function)
+               << ((IsWindows && CC == CC_C) || CC == CC_Win64);
     } else {
       // On x86-64/AArch64 Unix, don't allow this in Win64 ABI functions.
       // On x64 Windows, don't allow this in System V ABI functions.
       // (Yes, that means there's no corresponding way to support variadic
       // System V ABI functions on Windows.)
+      // Don't ever allow this in a 32-bit ABI function on a 64-bit target.
       if ((IsWindows && CC == CC_X86_64SysV) ||
-          (!IsWindows && CC == CC_Win64))
+          (!IsWindows && CC == CC_Win64) || is32BitABICallConv(CC))
         return S.Diag(Fn->getBeginLoc(),
                       diag::err_va_start_used_in_wrong_abi_function)
-               << !IsWindows;
+               << (is32BitABICallConv(CC) ? 2 : (!IsWindows ? 1 : 0));
     }
     return false;
   }
 
   if (IsMSVAStart)
     return S.Diag(Fn->getBeginLoc(), diag::err_builtin_x64_aarch64_only);
+  if (IsVAStart32 && !IsWine32)
+    return S.Diag(Fn->getBeginLoc(), diag::err_x86_builtin_only_on_wine32);
   return false;
 }
 

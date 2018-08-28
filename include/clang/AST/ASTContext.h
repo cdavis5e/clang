@@ -311,6 +311,9 @@ private:
   /// The typedef for the predefined \c __builtin_ms_va_list type.
   mutable TypedefDecl *BuiltinMSVaListDecl = nullptr;
 
+  /// The typedef for the predefined \c __builtin_va_list32 type.
+  mutable TypedefDecl *BuiltinVaList32Decl = nullptr;
+
   /// The typedef for the predefined \c id type.
   mutable TypedefDecl *ObjCIdDecl = nullptr;
 
@@ -1936,6 +1939,15 @@ public:
   /// Retrieve the type of the \c __builtin_ms_va_list type.
   QualType getBuiltinMSVaListType() const {
     return getTypeDeclType(getBuiltinMSVaListDecl());
+  }
+
+  /// Retrieve the C type declaration corresponding to the predefined
+  /// \c __builtin_va_list32 type.
+  TypedefDecl *getBuiltinVaList32Decl() const;
+
+  /// Retrieve the type of the \c __builtin_va_list32 type.
+  QualType getBuiltinVaList32Type() const {
+    return getTypeDeclType(getBuiltinVaList32Decl());
   }
 
   /// Return whether a declaration to a builtin is allowed to be

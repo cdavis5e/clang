@@ -125,6 +125,7 @@ protected:
   unsigned ComplexLongDoubleUsesFP2Ret : 1;
 
   unsigned HasBuiltinMSVaList : 1;
+  unsigned HasBuiltinVaList32 : 1;
 
   unsigned IsRenderScriptTarget : 1;
 
@@ -750,9 +751,13 @@ public:
   /// with this target.
   virtual BuiltinVaListKind getBuiltinVaListKind() const = 0;
 
-  /// Returns whether or not type \c __builtin_ms_va_list type is
+  /// Returns whether or not the \c __builtin_ms_va_list type is
   /// available on this target.
   bool hasBuiltinMSVaList() const { return HasBuiltinMSVaList; }
+
+  /// Returns whether or not the \c __builtin_va_list32 type is
+  /// available on this target.
+  bool hasBuiltinVaList32() const { return HasBuiltinVaList32; }
 
   /// Returns true for RenderScript.
   bool isRenderScriptTarget() const { return IsRenderScriptTarget; }

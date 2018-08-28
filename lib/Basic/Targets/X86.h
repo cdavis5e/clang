@@ -628,6 +628,10 @@ public:
     // Make __builtin_ms_va_list available.
     HasBuiltinMSVaList = true;
 
+    // If 32-bit Interop is on, make __builtin_va_list32 available, too.
+    if (IsWine32)
+      HasBuiltinVaList32 = true;
+
     // x86-64 has atomics up to 16 bytes.
     MaxAtomicPromoteWidth = 128;
     MaxAtomicInlineWidth = 64;

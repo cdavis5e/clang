@@ -9130,6 +9130,23 @@ Value *CodeGenFunction::EmitX86BuiltinExpr(unsigned BuiltinID,
   if (BuiltinID == X86::BI__builtin_cpu_init)
     return EmitX86CpuInit();
 
+  if (BuiltinID == X86::BI__builtin_va_start32 ||
+      BuiltinID == X86::BI__builtin_va_end32)
+    return EmitVAStartEnd(EmitVAList32Ref(E->getArg(0)).getPointer(),
+                          BuiltinID == X86::BI__builtin_va_start32);
+  if (BuiltinID == X86::BI__builtin_va_copy32) {
+    Address DestAddr = EmitVAList32Ref(E->getArg(0));
+    Address SrcAddr = EmitVAList32Ref(E->getArg(1));
+
+    llvm::Type *Type = llvm::PointerType::get(Int8Ty, 32);
+
+    DestAddr = Builder.CreateElementBitCast(DestAddr, Type, "cp");
+    SrcAddr = Builder.CreateElementBitCast(SrcAddr, Type, "ap");
+
+    Value *ArgPtr = Builder.CreateLoad(SrcAddr, "ap.val");
+    return Builder.CreateStore(ArgPtr, DestAddr);
+  }
+
   SmallVector<Value*, 4> Ops;
 
   // Find out if any arguments are required to be integer constant expressions.

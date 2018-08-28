@@ -41,7 +41,7 @@
 using namespace clang;
 using namespace CodeGen;
 
-/***/
+/** */
 
 unsigned CodeGenTypes::ClangCallConvToLLVMCallConv(CallingConv CC) {
   switch (CC) {
@@ -4534,9 +4534,13 @@ CGCallee CGCallee::prepareConcreteCallee(CodeGenFunction &CGF) const {
 Address CodeGenFunction::EmitVAArg(VAArgExpr *VE, Address &VAListAddr) {
   VAListAddr = VE->isMicrosoftABI()
                  ? EmitMSVAListRef(VE->getSubExpr())
-                 : EmitVAListRef(VE->getSubExpr());
+                 : VE->is32BitABI()
+                   ? EmitVAList32Ref(VE->getSubExpr())
+                   : EmitVAListRef(VE->getSubExpr());
   QualType Ty = VE->getType();
   if (VE->isMicrosoftABI())
     return CGM.getTypes().getABIInfo().EmitMSVAArg(*this, VAListAddr, Ty);
+  if (VE->is32BitABI())
+    return CGM.getTypes().getABIInfo().EmitVAArg32(*this, VAListAddr, Ty);
   return CGM.getTypes().getABIInfo().EmitVAArg(*this, VAListAddr, Ty);
 }

@@ -2265,6 +2265,11 @@ public:
   /// pointer to a char.
   Address EmitMSVAListRef(const Expr *E);
 
+  /// Emit a "reference" to a __builtin_va_list32; this is
+  /// always the value of the expression, because a __builtin_va_list32 is a
+  /// pointer to a char.
+  Address EmitVAList32Ref(const Expr *E);
+
   /// EmitAnyExprToTemp - Similarly to EmitAnyExpr(), however, the result will
   /// always be accessible even if no aggregate location is provided.
   RValue EmitAnyExprToTemp(const Expr *E);

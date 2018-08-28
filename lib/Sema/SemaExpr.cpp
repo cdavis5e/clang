@@ -13555,7 +13555,7 @@ ExprResult Sema::BuildVAArgExpr(SourceLocation BuiltinLoc,
                                 Expr *E, TypeSourceInfo *TInfo,
                                 SourceLocation RPLoc) {
   Expr *OrigExpr = E;
-  bool IsMS = false;
+  bool IsMS = false, Is32 = false;
 
   // CUDA device code does not support varargs.
   if (getLangOpts().CUDA && getLangOpts().CUDAIsDevice) {
@@ -13566,11 +13566,25 @@ ExprResult Sema::BuildVAArgExpr(SourceLocation BuiltinLoc,
     }
   }
 
+  // It might be a __builtin_va_list32. This is always and everywhere
+  // semantically distinct from both __builtin_va_list and __builtin_ms_va_list.
+  if (!E->isTypeDependent() && Context.getTargetInfo().hasBuiltinVaList32()) {
+    QualType VaList32Type = Context.getAddrSpaceQualType(
+        Context.getBuiltinVaList32Type(),
+        Context.getTargetInfo().getStackAddressSpace(getLangOpts()));
+    if (Context.hasSameType(VaList32Type, E->getType())) {
+      if (CheckForModifiableLvalue(E, BuiltinLoc, *this))
+        return ExprError();
+      Is32 = true;
+    }
+  }
   // It might be a __builtin_ms_va_list. (But don't ever mark a va_arg()
   // as Microsoft ABI on an actual Microsoft platform, where
   // __builtin_ms_va_list and __builtin_va_list are the same.)
-  if (!E->isTypeDependent() && Context.getTargetInfo().hasBuiltinMSVaList() &&
-      Context.getTargetInfo().getBuiltinVaListKind() != TargetInfo::CharPtrBuiltinVaList) {
+  if (!Is32 && !E->isTypeDependent() &&
+      Context.getTargetInfo().hasBuiltinMSVaList() &&
+      Context.getTargetInfo().getBuiltinVaListKind() !=
+          TargetInfo::CharPtrBuiltinVaList) {
     QualType MSVaListType = Context.getAddrSpaceQualType(
         Context.getBuiltinMSVaListType(),
         Context.getTargetInfo().getStackAddressSpace(getLangOpts()));
@@ -13585,7 +13599,7 @@ ExprResult Sema::BuildVAArgExpr(SourceLocation BuiltinLoc,
   QualType VaListType = Context.getAddrSpaceQualType(
         Context.getBuiltinVaListType(),
         Context.getTargetInfo().getStackAddressSpace(getLangOpts()));
-  if (!IsMS) {
+  if (!IsMS && !Is32) {
     if (VaListType->isArrayType()) {
       // Deal with implicit array decay; for example, on x86-64,
       // va_list is an array, but it's supposed to decay to
@@ -13614,7 +13628,7 @@ ExprResult Sema::BuildVAArgExpr(SourceLocation BuiltinLoc,
     }
   }
 
-  if (!IsMS && !E->isTypeDependent() &&
+  if (!IsMS && !Is32 && !E->isTypeDependent() &&
       !Context.hasSameType(VaListType, E->getType()))
     return ExprError(
         Diag(E->getBeginLoc(),
@@ -13661,7 +13675,12 @@ ExprResult Sema::BuildVAArgExpr(SourceLocation BuiltinLoc,
   }
 
   QualType T = TInfo->getType().getNonLValueExprType(Context);
-  return new (Context) VAArgExpr(BuiltinLoc, E, TInfo, RPLoc, T, IsMS);
+  VAArgExpr::Kind K = VAArgExpr::Default;
+  if (IsMS)
+    K = VAArgExpr::MSABI;
+  if (Is32)
+    K = VAArgExpr::ABI32;
+  return new (Context) VAArgExpr(BuiltinLoc, E, TInfo, RPLoc, T, K);
 }
 
 ExprResult Sema::ActOnGNUNullExpr(SourceLocation TokenLoc) {

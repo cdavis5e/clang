@@ -3900,17 +3900,23 @@ public:
 /// Represents a call to the builtin function \c __builtin_va_arg.
 class VAArgExpr : public Expr {
   Stmt *Val;
-  llvm::PointerIntPair<TypeSourceInfo *, 1, bool> TInfo;
+  llvm::PointerIntPair<TypeSourceInfo *, 2, unsigned> TInfo;
   SourceLocation BuiltinLoc, RParenLoc;
 public:
+  /// The kind of \c va_arg expression this is.
+  enum Kind {
+    Default,  ///< A normal \c va_arg.
+    MSABI,    ///< A \c __builtin_ms_va_arg for a \c __builtin_ms_va_list.
+    ABI32     ///< A \c __builtin_va_arg32 for a \c __builtin_va_list32.
+  };
   VAArgExpr(SourceLocation BLoc, Expr *e, TypeSourceInfo *TInfo,
-            SourceLocation RPLoc, QualType t, bool IsMS)
+            SourceLocation RPLoc, QualType t, Kind k)
       : Expr(VAArgExprClass, t, VK_RValue, OK_Ordinary, t->isDependentType(),
              false, (TInfo->getType()->isInstantiationDependentType() ||
                      e->isInstantiationDependent()),
              (TInfo->getType()->containsUnexpandedParameterPack() ||
               e->containsUnexpandedParameterPack())),
-        Val(e), TInfo(TInfo, IsMS), BuiltinLoc(BLoc), RParenLoc(RPLoc) {}
+        Val(e), TInfo(TInfo, k), BuiltinLoc(BLoc), RParenLoc(RPLoc) {}
 
   /// Create an empty __builtin_va_arg expression.
   explicit VAArgExpr(EmptyShell Empty)
@@ -3920,9 +3926,17 @@ public:
   Expr *getSubExpr() { return cast<Expr>(Val); }
   void setSubExpr(Expr *E) { Val = E; }
 
-  /// Returns whether this is really a Win64 ABI va_arg expression.
-  bool isMicrosoftABI() const { return TInfo.getInt(); }
-  void setIsMicrosoftABI(bool IsMS) { TInfo.setInt(IsMS); }
+  /// Returns whether this is really a Win64 ABI \c va_arg expression.
+  bool isMicrosoftABI() const { return getABIKind() == MSABI; }
+
+  /// Returns whether this is really a 32-bit ABI \c va_arg expression.
+  bool is32BitABI() const { return getABIKind() == ABI32; }
+
+  /// Returns the ABI kind of this \c va_arg expression.
+  Kind getABIKind() const { return static_cast<Kind>(TInfo.getInt()); }
+
+  /// Changes the kind of this \c va_arg expression.
+  void setABIKind(Kind k) { TInfo.setInt(k); }
 
   TypeSourceInfo *getWrittenTypeInfo() const { return TInfo.getPointer(); }
   void setWrittenTypeInfo(TypeSourceInfo *TI) { TInfo.setPointer(TI); }

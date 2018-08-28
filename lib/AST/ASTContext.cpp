@@ -7172,6 +7172,31 @@ static TypedefDecl *CreateVoidPtrBuiltinVaListDecl(const ASTContext *Context) {
   return Context->buildImplicitTypedef(T, "__builtin_va_list");
 }
 
+static TypedefDecl *CreateVaList32Decl(const ASTContext *Context) {
+  // This needs to be semantically different from __builtin_ms_va_list,
+  // hence the complexity.
+  // struct __va_list32 {
+  RecordDecl *VaList32Decl = Context->buildImplicitRecord("__va_list32");
+  VaList32Decl->startDefinition();
+  //   char __dummy;
+  FieldDecl *Field = FieldDecl::Create(*Context, VaList32Decl,
+                                       SourceLocation(), SourceLocation(),
+                                       &Context->Idents.get("__dummy"),
+                                       Context->CharTy, /*TInfo=*/nullptr,
+                                       /*BitWidth=*/nullptr,
+                                       /*Mutable=*/false,
+                                       ICIS_NoInit);
+  Field->setAccess(AS_public);
+  VaList32Decl->addDecl(Field);
+  // };
+  VaList32Decl->completeDefinition();
+  // typedef struct __va_list32* __ptr32 __builtin_va_list32;
+  QualType VaList32Type = Context->getPointerType(
+      Context->getAddrSpaceQualType(Context->getRecordType(VaList32Decl),
+                                    LangAS::ptr32));
+  return Context->buildImplicitTypedef(VaList32Type, "__builtin_va_list32");
+}
+
 static TypedefDecl *
 CreateAArch64ABIBuiltinVaListDecl(const ASTContext *Context) {
   // struct __va_list
@@ -7504,6 +7529,13 @@ TypedefDecl *ASTContext::getBuiltinMSVaListDecl() const {
     BuiltinMSVaListDecl = CreateMSVaListDecl(this);
 
   return BuiltinMSVaListDecl;
+}
+
+TypedefDecl *ASTContext::getBuiltinVaList32Decl() const {
+  if (!BuiltinVaList32Decl)
+    BuiltinVaList32Decl = CreateVaList32Decl(this);
+
+  return BuiltinVaList32Decl;
 }
 
 bool ASTContext::canBuiltinBeRedeclared(const FunctionDecl *FD) const {
@@ -9319,7 +9351,8 @@ static QualType DecodeTypeFromStr(const char *&Str, const ASTContext &Context,
     Type = Context.getObjCSuperType();
     break;
   case 'a':
-    Type = Context.getBuiltinVaListType();
+    Type = Signed ? Context.getBuiltinVaList32Type()
+                  : Context.getBuiltinVaListType();
     assert(!Type.isNull() && "builtin va list type not initialized!");
     break;
   case 'A':
@@ -9331,7 +9364,8 @@ static QualType DecodeTypeFromStr(const char *&Str, const ASTContext &Context,
     // is x86-64, where va_list is a __va_list_tag[1]. For x86,
     // we want this argument to be a char*&; for x86-64, we want
     // it to be a __va_list_tag*.
-    Type = Context.getBuiltinVaListType();
+    Type = Signed ? Context.getBuiltinVaList32Type()
+                  : Context.getBuiltinVaListType();
     assert(!Type.isNull() && "builtin va list type not initialized!");
     if (Type->isArrayType())
       Type = Context.getArrayDecayedType(Type);

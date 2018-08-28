@@ -95,6 +95,11 @@ Address ABIInfo::EmitMSVAArg(CodeGenFunction &CGF, Address VAListAddr,
   return Address::invalid();
 }
 
+Address ABIInfo::EmitVAArg32(CodeGenFunction &CGF, Address VAListAddr,
+                             QualType Ty) const {
+  return Address::invalid();
+}
+
 ABIInfo::~ABIInfo() {}
 
 /// Does the given lowering require more than the given number of
@@ -285,17 +290,22 @@ static llvm::Value *emitRoundPointerUpToAlignment(CodeGenFunction &CGF,
 ///   leaving one or more empty slots behind as padding.  If this
 ///   is false, the returned address might be less-aligned than
 ///   DirectAlign.
+/// \param ElemTy - The type to cast the pointer to. If not given,
+///   defaults to \c CGF.Int8PtrTy.
 static Address emitVoidPtrDirectVAArg(CodeGenFunction &CGF,
                                       Address VAListAddr,
                                       llvm::Type *DirectTy,
                                       CharUnits DirectSize,
                                       CharUnits DirectAlign,
                                       CharUnits SlotSize,
-                                      bool AllowHigherAlign) {
+                                      bool AllowHigherAlign,
+                                      llvm::Type *ElemTy = nullptr) {
   // Cast the element type to i8* if necessary.  Some platforms define
   // va_list as a struct containing an i8* instead of just an i8*.
-  if (VAListAddr.getElementType() != CGF.Int8PtrTy)
-    VAListAddr = CGF.Builder.CreateElementBitCast(VAListAddr, CGF.Int8PtrTy);
+  if (ElemTy == nullptr)
+    ElemTy = CGF.Int8PtrTy;
+  if (VAListAddr.getElementType() != ElemTy)
+    VAListAddr = CGF.Builder.CreateElementBitCast(VAListAddr, ElemTy);
 
   llvm::Value *Ptr = CGF.Builder.CreateLoad(VAListAddr, "argp.cur");
 
@@ -339,11 +349,14 @@ static Address emitVoidPtrDirectVAArg(CodeGenFunction &CGF,
 ///   an argument type with an alignment greater than the slot size
 ///   will be emitted on a higher-alignment address, potentially
 ///   leaving one or more empty slots behind as padding.
+/// \param ElemTy - The type to cast the pointer to. If not given,
+///   defaults to \c CGF.Int8PtrTy.
 static Address emitVoidPtrVAArg(CodeGenFunction &CGF, Address VAListAddr,
                                 QualType ValueTy, bool IsIndirect,
                                 std::pair<CharUnits, CharUnits> ValueInfo,
                                 CharUnits SlotSizeAndAlign,
-                                bool AllowHigherAlign) {
+                                bool AllowHigherAlign,
+                                llvm::Type *ElemTy = nullptr) {
   // The size and alignment of the value that was passed directly.
   CharUnits DirectSize, DirectAlign;
   if (IsIndirect) {
@@ -362,7 +375,8 @@ static Address emitVoidPtrVAArg(CodeGenFunction &CGF, Address VAListAddr,
   Address Addr = emitVoidPtrDirectVAArg(CGF, VAListAddr, DirectTy,
                                         DirectSize, DirectAlign,
                                         SlotSizeAndAlign,
-                                        AllowHigherAlign);
+                                        AllowHigherAlign,
+                                        ElemTy);
 
   if (IsIndirect) {
     Addr = Address(CGF.Builder.CreateLoad(Addr), ValueInfo.second);
@@ -1007,9 +1021,6 @@ class X86_32ABIInfo : public SwiftABIInfo {
 
   ABIArgInfo getIndirectReturnResult(QualType Ty, CCState &State) const;
 
-  /// Return the alignment to use for the given type on the stack.
-  unsigned getTypeStackAlignInBytes(QualType Ty, unsigned Align) const;
-
   Class classify(QualType Ty) const;
   ABIArgInfo classifyReturnType(QualType RetTy, CCState &State) const;
   ABIArgInfo classifyArgumentType(QualType RetTy, CCState &State) const;
@@ -1035,6 +1046,9 @@ class X86_32ABIInfo : public SwiftABIInfo {
                              bool &UsedInAlloca) const;
 
 public:
+
+  /// Return the alignment to use for the given type on the stack.
+  unsigned getTypeStackAlignInBytes(QualType Ty, unsigned Align) const;
 
   void computeInfo(CGFunctionInfo &FI) const override;
   Address EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
@@ -2206,6 +2220,8 @@ public:
   Address EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                     QualType Ty) const override;
   Address EmitMSVAArg(CodeGenFunction &CGF, Address VAListAddr,
+                      QualType Ty) const override;
+  Address EmitVAArg32(CodeGenFunction &CGF, Address VAListAddr,
                       QualType Ty) const override;
 
   bool has64BitPointers() const {
@@ -3889,6 +3905,26 @@ Address X86_64ABIInfo::EmitMSVAArg(CodeGenFunction &CGF, Address VAListAddr,
                           CGF.getContext().getTypeInfoInChars(Ty),
                           CharUnits::fromQuantity(8),
                           /*allowHigherAlign*/ false);
+}
+
+Address X86_64ABIInfo::EmitVAArg32(CodeGenFunction &CGF, Address VAListAddr,
+                                   QualType Ty) const {
+  if (!IsWine32)
+    return Address::invalid();
+
+  auto TypeInfo = getContext().getTypeInfoInChars(Ty);
+
+  // x86-32 changes the alignment of certain arguments on the stack.
+  //
+  // Just messing with TypeInfo like this works because we never pass
+  // anything indirectly.
+  TypeInfo.second = CharUnits::fromQuantity(
+      ABI32->getTypeStackAlignInBytes(Ty, TypeInfo.second.getQuantity()));
+
+  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, /*Indirect*/ false,
+                          TypeInfo, CharUnits::fromQuantity(4),
+                          /*AllowHigherAlign*/ true,
+                          llvm::PointerType::get(CGF.Int8Ty, 32));
 }
 
 ABIArgInfo

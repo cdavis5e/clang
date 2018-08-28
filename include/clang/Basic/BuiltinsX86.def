@@ -34,6 +34,11 @@ BUILTIN(__builtin_cpu_init, "v", "n")
 BUILTIN(__builtin_cpu_supports, "bcC*", "nc")
 BUILTIN(__builtin_cpu_is, "bcC*", "nc")
 
+// 32-bit-compatible va_list functions
+BUILTIN(__builtin_va_start32, "vSA.", "nt")
+BUILTIN(__builtin_va_end32, "vSA", "n")
+BUILTIN(__builtin_va_copy32, "vSASA", "n")
+
 // Undefined Values
 //
 TARGET_BUILTIN(__builtin_ia32_undef128, "V2d", "ncV:128:", "")

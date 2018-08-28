@@ -5555,7 +5555,7 @@ Expr *ASTNodeImporter::VisitVAArgExpr(VAArgExpr *E) {
 
   return new (Importer.getToContext()) VAArgExpr(
         Importer.Import(E->getBuiltinLoc()), SubExpr, TInfo,
-        Importer.Import(E->getRParenLoc()), T, E->isMicrosoftABI());
+        Importer.Import(E->getRParenLoc()), T, E->getABIKind());
 }
 
 Expr *ASTNodeImporter::VisitGNUNullExpr(GNUNullExpr *E) {

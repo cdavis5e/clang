@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -triple x86_64-unknown-unknown -fsyntax-only -verify %s
+// RUN: %clang_cc1 -triple x86_64-unknown-unknown-wine32 -fsyntax-only -verify %s
 
 // ---------------------------------------------------------------------
 // Imaginary literals
@@ -108,15 +108,16 @@ template<typename VaList, typename ArgType>
 struct VaArg1 {
   void f(int n, ...) {
     VaList va;
-    __builtin_va_start(va, n); // expected-error{{int}} expected-error{{char *}}
+    __builtin_va_start(va, n); // expected-error{{int}} expected-error{{char *}} expected-error{{__va_list32 *}}
     for (int i = 0; i != n; ++i)
       (void)__builtin_va_arg(va, ArgType); // expected-error{{int}}
-    __builtin_va_end(va); // expected-error{{int}} expected-error{{char *}}
+    __builtin_va_end(va); // expected-error{{int}} expected-error{{char *}} expected-error{{__va_list32 *}}
   }
 };
 
 template struct VaArg1<__builtin_va_list, int>;
 template struct VaArg1<__builtin_ms_va_list, int>; // expected-note{{instantiation}}
+template struct VaArg1<__builtin_va_list32, int>; // expected-note{{instantiation}}
 template struct VaArg1<int, int>; // expected-note{{instantiation}}
 
 template<typename ArgType>
@@ -136,13 +137,43 @@ template<typename VaList, typename ArgType>
 struct VaArg3 {
   void __attribute__((ms_abi)) f(int n, ...) {
     VaList va;
-    __builtin_ms_va_start(va, n); // expected-error{{int}} expected-error{{__va_list_tag}}
+    __builtin_ms_va_start(va, n); // expected-error{{int}} expected-error{{__va_list_tag}} expected-error{{__va_list32 *}}
     for (int i = 0; i != n; ++i)
       (void)__builtin_va_arg(va, ArgType); // expected-error{{int}}
-    __builtin_ms_va_end(va); // expected-error{{int}} expected-error{{__va_list_tag}}
+    __builtin_ms_va_end(va); // expected-error{{int}} expected-error{{__va_list_tag}} expected-error{{__va_list32 *}}
   }
 };
 
 template struct VaArg3<__builtin_ms_va_list, int>;
 template struct VaArg3<__builtin_va_list, int>; // expected-note{{instantiation}}
+template struct VaArg3<__builtin_va_list32, int>; // expected-note{{instantiation}}
 template struct VaArg3<int, int>; // expected-note{{instantiation}}
+
+template<typename ArgType>
+struct VaArg4 {
+  void __attribute__((cdecl32)) f(int n, ...) {
+    __builtin_va_list32 va;
+    __builtin_va_start32(va, n);
+    for (int i = 0; i != n; ++i)
+      (void)__builtin_va_arg(va, ArgType);
+    __builtin_va_end32(va);
+  }
+};
+
+template struct VaArg4<int>;
+
+template<typename VaList, typename ArgType>
+struct VaArg5 {
+  void __attribute__((cdecl32)) f(int n, ...) {
+    VaList va;
+    __builtin_va_start32(va, n); // expected-error{{int}} expected-error{{__va_list_tag}} expected-error{{char *}}
+    for (int i = 0; i != n; ++i)
+      (void)__builtin_va_arg(va, ArgType); // expected-error{{int}}
+    __builtin_va_end32(va); // expected-error{{int}} expected-error{{__va_list_tag}} expected-error{{char *}}
+  }
+};
+
+template struct VaArg5<__builtin_va_list32, int>;
+template struct VaArg5<__builtin_va_list, int>; // expected-note{{instantiation}}
+template struct VaArg5<__builtin_ms_va_list, int>; // expected-note{{instantiation}}
+template struct VaArg5<int, int>; // expected-note{{instantiation}}

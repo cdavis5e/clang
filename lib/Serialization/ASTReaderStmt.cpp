@@ -910,7 +910,7 @@ void ASTStmtReader::VisitVAArgExpr(VAArgExpr *E) {
   E->setWrittenTypeInfo(GetTypeSourceInfo());
   E->setBuiltinLoc(ReadSourceLocation());
   E->setRParenLoc(ReadSourceLocation());
-  E->setIsMicrosoftABI(Record.readInt());
+  E->setABIKind(static_cast<VAArgExpr::Kind>(Record.readInt()));
 }
 
 void ASTStmtReader::VisitAddrLabelExpr(AddrLabelExpr *E) {

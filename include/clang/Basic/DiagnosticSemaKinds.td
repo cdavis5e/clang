@@ -8196,9 +8196,11 @@ def err_va_start_outside_function : Error<
 def err_va_start_fixed_function : Error<
   "'va_start' used in function with fixed args">;
 def err_va_start_used_in_wrong_abi_function : Error<
-  "'va_start' used in %select{System V|Win64}0 ABI function">;
-def err_ms_va_start_used_in_sysv_function : Error<
-  "'__builtin_ms_va_start' used in System V ABI function">;
+  "'va_start' used in %select{System V|Win64|32-bit}0 ABI function">;
+def err_ms_va_start_used_in_wrong_abi_function : Error<
+  "'__builtin_ms_va_start' used in %select{System V|32-bit}0 ABI function">;
+def err_va_start32_used_in_wrong_abi_function : Error<
+  "'__builtin_va_start32' used in %select{System V|Win64}0 ABI function">;
 def warn_second_arg_of_va_start_not_last_named_param : Warning<
   "second argument to 'va_start' is not the last named parameter">,
   InGroup<Varargs>;
@@ -8328,6 +8330,8 @@ def err_builtin_x64_aarch64_only : Error<
   "this builtin is only available on x86-64 and aarch64 targets">;
 def err_ppc_builtin_only_on_pwr7 : Error<
   "this builtin is only valid on POWER7 or later CPUs">;
+def err_x86_builtin_only_on_wine32 : Error<
+  "this builtin is only available on Wine32 targets">;
 def err_x86_builtin_invalid_rounding : Error<
   "invalid rounding argument">;
 def err_x86_builtin_invalid_scale : Error<

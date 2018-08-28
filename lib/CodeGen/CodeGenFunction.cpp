@@ -2158,6 +2158,10 @@ Address CodeGenFunction::EmitMSVAListRef(const Expr *E) {
   return EmitLValue(E).getAddress();
 }
 
+Address CodeGenFunction::EmitVAList32Ref(const Expr *E) {
+  return EmitLValue(E).getAddress();
+}
+
 void CodeGenFunction::EmitDeclRefExprDbgValue(const DeclRefExpr *E,
                                               const APValue &Init) {
   assert(!Init.isUninit() && "Invalid DeclRefExpr initializer!");

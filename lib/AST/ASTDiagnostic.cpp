@@ -133,7 +133,8 @@ static QualType Desugar(ASTContext &Context, QualType QT, bool &ShouldAKA) {
 
     // Don't desugar va_list.
     if (QualType(Ty, 0) == Context.getBuiltinVaListType() ||
-        QualType(Ty, 0) == Context.getBuiltinMSVaListType())
+        QualType(Ty, 0) == Context.getBuiltinMSVaListType() ||
+        QualType(Ty, 0) == Context.getBuiltinVaList32Type())
       break;
 
     // Otherwise, do a single-step desugar.
