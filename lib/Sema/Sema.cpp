@@ -126,7 +126,8 @@ Sema::Sema(Preprocessor &pp, ASTContext &ctxt, ASTConsumer &consumer,
           LangOpts.getMSPointerToMemberRepresentationMethod()),
       VtorDispStack(MSVtorDispAttr::Mode(LangOpts.VtorDispMode)), PackStack(0),
       DataSegStack(nullptr), BSSSegStack(nullptr), ConstSegStack(nullptr),
-      CodeSegStack(nullptr), AddrSpaceStack(LangAS::Default),
+      CodeSegStack(nullptr),
+      AddrSpaceStack(Context.getTargetInfo().getTargetOpts().DefaultAddrSpace),
       CurInitSeg(nullptr), VisContext(nullptr),
       PragmaAttributeCurrentTargetDecl(nullptr),
       IsBuildingRecoveryCallExpr(false), Cleanup{}, LateTemplateParser(nullptr),
@@ -176,6 +177,7 @@ Sema::Sema(Preprocessor &pp, ASTContext &ctxt, ASTConsumer &consumer,
   SemaPPCallbackHandler = Callbacks.get();
   PP.addPPCallbacks(std::move(Callbacks));
   SemaPPCallbackHandler->set(*this);
+  Context.DefaultAddrSpace = AddrSpaceStack.CurrentValue;
 }
 
 void Sema::addImplicitTypedef(StringRef Name, QualType T) {

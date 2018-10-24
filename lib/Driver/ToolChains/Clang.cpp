@@ -3795,6 +3795,12 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back(Args.MakeArgString(CPU));
   }
 
+  Args.AddLastArg(CmdArgs, options::OPT_mdefault_address_space_EQ);
+  // On Wine32, default to the __ptr32 address space.
+  if (!Args.hasArg(options::OPT_mdefault_address_space_EQ) &&
+      Triple.getEnvironment() == llvm::Triple::Wine32)
+    CmdArgs.push_back("-mdefault-address-space=ptr32");
+
   RenderTargetOptions(Triple, Args, KernelOrKext, CmdArgs);
 
   // These two are potentially updated by AddClangCLArgs.

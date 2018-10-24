@@ -17,6 +17,7 @@
 
 #include <string>
 #include <vector>
+#include "clang/Basic/AddressSpaces.h"
 #include "clang/Basic/OpenCLOptions.h"
 #include "llvm/Target/TargetOptions.h"
 
@@ -67,6 +68,9 @@ public:
   /// \brief If enabled, use 32-bit pointers for accessing const/local/shared
   /// address space.
   bool NVPTXUseShortPointers = false;
+
+  /// The default address space for pointers.
+  LangAS DefaultAddrSpace = LangAS::Default;
 
   // The code model to be used as specified by the user. Corresponds to
   // CodeModel::Model enum defined in include/llvm/Support/CodeGen.h, plus

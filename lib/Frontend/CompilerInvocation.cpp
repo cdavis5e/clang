@@ -3008,6 +3008,18 @@ static void ParseTargetArgs(TargetOptions &Opts, ArgList &Args,
   Opts.ForceEnableInt128 = Args.hasArg(OPT_fforce_enable_int128);
   Opts.NVPTXUseShortPointers = Args.hasFlag(
       options::OPT_fcuda_short_ptr, options::OPT_fno_cuda_short_ptr, false);
+  if (Arg *A = Args.getLastArg(OPT_mdefault_address_space_EQ)) {
+    StringRef Value = A->getValue();
+    auto AS = llvm::StringSwitch<LangAS>(Value)
+                                 .Case("default", LangAS::Default)
+                                 .Case("ptr32", LangAS::ptr32)
+                                 .Default(LangAS(-1));
+    if (AS == LangAS(-1))
+      Diags.Report(diag::err_drv_invalid_value) << A->getAsString(Args)
+                                                << Value;
+    else
+      Opts.DefaultAddrSpace = AS;
+  }
 }
 
 bool CompilerInvocation::CreateFromArgs(CompilerInvocation &Res,
