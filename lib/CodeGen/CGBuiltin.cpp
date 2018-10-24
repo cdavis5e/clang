@@ -401,6 +401,13 @@ EncompassingIntegerType(ArrayRef<struct WidthAndSignedness> Types) {
 
 Value *CodeGenFunction::EmitVAStartEnd(Value *ArgValue, bool IsStart) {
   llvm::Type *DestType = Int8PtrTy;
+  if (ArgValue->getType()->getPointerAddressSpace() != 0) {
+    llvm::Type *ElemType =
+        cast<llvm::PointerType>(ArgValue->getType())->getElementType();
+    ArgValue = Builder.CreateAddrSpaceCast(
+        ArgValue, llvm::PointerType::getUnqual(ElemType),
+        ArgValue->getName().data());
+  }
   if (ArgValue->getType() != DestType)
     ArgValue =
         Builder.CreateBitCast(ArgValue, DestType, ArgValue->getName().data());
@@ -1489,6 +1496,18 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
 
     llvm::Type *Type = Int8PtrTy;
 
+    if (DstPtr->getType()->getPointerAddressSpace() != 0) {
+      llvm::Type *ElemType =
+          cast<llvm::PointerType>(DstPtr->getType())->getElementType();
+      DstPtr = Builder.CreateAddrSpaceCast(
+          DstPtr, llvm::PointerType::getUnqual(ElemType));
+    }
+    if (SrcPtr->getType()->getPointerAddressSpace() != 0) {
+      llvm::Type *ElemType =
+          cast<llvm::PointerType>(SrcPtr->getType())->getElementType();
+      SrcPtr = Builder.CreateAddrSpaceCast(
+          SrcPtr, llvm::PointerType::getUnqual(ElemType));
+    }
     DstPtr = Builder.CreateBitCast(DstPtr, Type);
     SrcPtr = Builder.CreateBitCast(SrcPtr, Type);
     return RValue::get(Builder.CreateCall(CGM.getIntrinsic(Intrinsic::vacopy),
@@ -3686,12 +3705,10 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
     Address DestAddr = EmitMSVAListRef(E->getArg(0));
     Address SrcAddr = EmitMSVAListRef(E->getArg(1));
 
-    llvm::Type *BPP = Int8PtrPtrTy;
+    llvm::Type *Type = Int8PtrTy;
 
-    DestAddr = Address(Builder.CreateBitCast(DestAddr.getPointer(), BPP, "cp"),
-                       DestAddr.getAlignment());
-    SrcAddr = Address(Builder.CreateBitCast(SrcAddr.getPointer(), BPP, "ap"),
-                      SrcAddr.getAlignment());
+    DestAddr = Builder.CreateElementBitCast(DestAddr, Type, "cp");
+    SrcAddr = Builder.CreateElementBitCast(SrcAddr, Type, "ap");
 
     Value *ArgPtr = Builder.CreateLoad(SrcAddr, "ap.val");
     return RValue::get(Builder.CreateStore(ArgPtr, DestAddr));

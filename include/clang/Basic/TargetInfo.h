@@ -1196,6 +1196,11 @@ public:
     return LangAS::Default;
   }
 
+  /// Return an AST address space which can be used for stack memory.
+  virtual LangAS getStackAddressSpace(const LangOptions &) const {
+    return LangAS::Default;
+  }
+
   /// Retrieve the name of the platform as it is used in the
   /// availability attribute.
   StringRef getPlatformName() const { return PlatformName; }

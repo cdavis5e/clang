@@ -7314,7 +7314,8 @@ void Sema::CheckVariableDeclarationType(VarDecl *NewVD) {
   // automatic variables that point to other address spaces.
   // ISO/IEC TR 18037 S5.1.2
   if (!getLangOpts().OpenCL && NewVD->hasLocalStorage() &&
-      T.getAddressSpace() != LangAS::Default) {
+      T.getAddressSpace() != Context.getTargetInfo().getStackAddressSpace(
+          getLangOpts())) {
     Diag(NewVD->getLocation(), diag::err_as_qualified_auto_decl) << 0;
     NewVD->setInvalidDecl();
     return;

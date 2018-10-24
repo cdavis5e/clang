@@ -1909,6 +1909,30 @@ VarDecl *VarDecl::Create(ASTContext &C, DeclContext *DC,
                          SourceLocation StartL, SourceLocation IdL,
                          IdentifierInfo *Id, QualType T, TypeSourceInfo *TInfo,
                          StorageClass S) {
+  // Fix up the address space of this variable.
+  // FIXME: There should be a cleaner way to do this.
+  if (T.getAddressSpace() == LangAS::Default) {
+    LangAS AS;
+    switch (S) {
+    case SC_None:
+      if (!DC->getRedeclContext()->isFileContext())
+        AS = C.getTargetInfo().getStackAddressSpace(C.getLangOpts());
+      break;
+    case SC_Register:
+      if (!DC->getRedeclContext()->isFunctionOrMethod()) {
+        AS = LangAS::Default;
+        break;
+      }
+      LLVM_FALLTHROUGH;
+    case SC_Auto:
+      AS = C.getTargetInfo().getStackAddressSpace(C.getLangOpts());
+      break;
+    default:
+      AS = LangAS::Default;
+    }
+    if (AS != LangAS::Default)
+      T = C.getAddrSpaceQualType(T, AS);
+  }
   return new (C, DC) VarDecl(Var, C, DC, StartL, IdL, Id, T, TInfo, S);
 }
 
@@ -2527,6 +2551,10 @@ ParmVarDecl *ParmVarDecl::Create(ASTContext &C, DeclContext *DC,
                                  SourceLocation IdLoc, IdentifierInfo *Id,
                                  QualType T, TypeSourceInfo *TInfo,
                                  StorageClass S, Expr *DefArg) {
+  LangAS AS = C.getTargetInfo().getStackAddressSpace(C.getLangOpts());
+  if (AS != LangAS::Default && T.getAddressSpace() == LangAS::Default &&
+      !T->isVoidType())
+    T = C.getAddrSpaceQualType(T, AS);
   return new (C, DC) ParmVarDecl(ParmVar, C, DC, StartLoc, IdLoc, Id, T, TInfo,
                                  S, DefArg);
 }
@@ -4391,11 +4419,19 @@ ImplicitParamDecl *ImplicitParamDecl::Create(ASTContext &C, DeclContext *DC,
                                              SourceLocation IdLoc,
                                              IdentifierInfo *Id, QualType Type,
                                              ImplicitParamKind ParamKind) {
+  LangAS AS = C.getTargetInfo().getStackAddressSpace(C.getLangOpts());
+  if (AS != LangAS::Default && Type.getAddressSpace() == LangAS::Default &&
+      !Type->isVoidType())
+    Type = C.getAddrSpaceQualType(Type, AS);
   return new (C, DC) ImplicitParamDecl(C, DC, IdLoc, Id, Type, ParamKind);
 }
 
 ImplicitParamDecl *ImplicitParamDecl::Create(ASTContext &C, QualType Type,
                                              ImplicitParamKind ParamKind) {
+  LangAS AS = C.getTargetInfo().getStackAddressSpace(C.getLangOpts());
+  if (AS != LangAS::Default && Type.getAddressSpace() == LangAS::Default &&
+      !Type->isVoidType())
+    Type = C.getAddrSpaceQualType(Type, AS);
   return new (C, nullptr) ImplicitParamDecl(C, Type, ParamKind);
 }
 

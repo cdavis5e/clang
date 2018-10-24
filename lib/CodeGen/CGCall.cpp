@@ -3952,7 +3952,8 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
                (LV.getAlignment() >=
                 getContext().getTypeAlignInChars(I->Ty))) ||
               (ArgInfo.getIndirectByVal() &&
-               ((AS != LangAS::Default && AS != LangAS::opencl_private &&
+               ((AS != Target.getStackAddressSpace(getLangOpts()) &&
+                 AS != LangAS::opencl_private &&
                  AS != CGM.getASTAllocaAddressSpace())))) {
             NeedCopy = true;
           }
@@ -3968,8 +3969,8 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
           auto *T = V->getType()->getPointerElementType()->getPointerTo(
               CGM.getDataLayout().getAllocaAddrSpace());
           IRCallArgs[FirstIRArg] = getTargetHooks().performAddrSpaceCast(
-              *this, V, LangAS::Default, CGM.getASTAllocaAddressSpace(), T,
-              true);
+              *this, V, Target.getStackAddressSpace(getLangOpts()),
+              CGM.getASTAllocaAddressSpace(), T, true);
         }
       }
       break;

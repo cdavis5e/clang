@@ -15,6 +15,7 @@
 #define LLVM_CLANG_LIB_BASIC_TARGETS_AMDGPU_H
 
 #include "clang/Basic/TargetInfo.h"
+#include "clang/Basic/LangOptions.h"
 #include "clang/Basic/TargetOptions.h"
 #include "llvm/ADT/StringSet.h"
 #include "llvm/ADT/Triple.h"
@@ -103,6 +104,12 @@ public:
 
   uint64_t getMaxPointerWidth() const override {
     return getTriple().getArch() == llvm::Triple::amdgcn ? 64 : 32;
+  }
+
+  LangAS getStackAddressSpace(const LangOptions &Opts) const override {
+    if (Opts.OpenCL)
+      return LangAS::opencl_private;
+    return LangAS::Default;
   }
 
   const char *getClobbers() const override { return ""; }

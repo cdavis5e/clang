@@ -13571,7 +13571,9 @@ ExprResult Sema::BuildVAArgExpr(SourceLocation BuiltinLoc,
   // __builtin_ms_va_list and __builtin_va_list are the same.)
   if (!E->isTypeDependent() && Context.getTargetInfo().hasBuiltinMSVaList() &&
       Context.getTargetInfo().getBuiltinVaListKind() != TargetInfo::CharPtrBuiltinVaList) {
-    QualType MSVaListType = Context.getBuiltinMSVaListType();
+    QualType MSVaListType = Context.getAddrSpaceQualType(
+        Context.getBuiltinMSVaListType(),
+        Context.getTargetInfo().getStackAddressSpace(getLangOpts()));
     if (Context.hasSameType(MSVaListType, E->getType())) {
       if (CheckForModifiableLvalue(E, BuiltinLoc, *this))
         return ExprError();
@@ -13580,7 +13582,9 @@ ExprResult Sema::BuildVAArgExpr(SourceLocation BuiltinLoc,
   }
 
   // Get the va_list type
-  QualType VaListType = Context.getBuiltinVaListType();
+  QualType VaListType = Context.getAddrSpaceQualType(
+        Context.getBuiltinVaListType(),
+        Context.getTargetInfo().getStackAddressSpace(getLangOpts()));
   if (!IsMS) {
     if (VaListType->isArrayType()) {
       // Deal with implicit array decay; for example, on x86-64,

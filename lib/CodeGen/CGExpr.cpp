@@ -84,8 +84,9 @@ Address CodeGenFunction::CreateTempAlloca(llvm::Type *Ty, CharUnits Align,
   // be different from the type defined by the language. For example,
   // in C++ the auto variables are in the default address space. Therefore
   // cast alloca to the default address space when necessary.
-  if (getASTAllocaAddressSpace() != LangAS::Default) {
-    auto DestAddrSpace = getContext().getTargetAddressSpace(LangAS::Default);
+  if (getASTAllocaAddressSpace() != Target.getStackAddressSpace(getLangOpts())){
+    auto DestAddrSpace = getContext().getTargetAddressSpace(
+        Target.getStackAddressSpace(getLangOpts()));
     llvm::IRBuilderBase::InsertPointGuard IPG(Builder);
     // When ArraySize is nullptr, alloca is inserted at AllocaInsertPt,
     // otherwise alloca is inserted at the current insertion point of the
@@ -93,7 +94,8 @@ Address CodeGenFunction::CreateTempAlloca(llvm::Type *Ty, CharUnits Align,
     if (!ArraySize)
       Builder.SetInsertPoint(AllocaInsertPt);
     V = getTargetHooks().performAddrSpaceCast(
-        *this, V, getASTAllocaAddressSpace(), LangAS::Default,
+        *this, V, getASTAllocaAddressSpace(),
+        Target.getStackAddressSpace(getLangOpts()),
         Ty->getPointerTo(DestAddrSpace), /*non-null*/ true);
   }
 

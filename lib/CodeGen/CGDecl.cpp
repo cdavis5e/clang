@@ -1120,7 +1120,7 @@ CodeGenFunction::AutoVarEmission
 CodeGenFunction::EmitAutoVarAlloca(const VarDecl &D) {
   QualType Ty = D.getType();
   assert(
-      Ty.getAddressSpace() == LangAS::Default ||
+      Ty.getAddressSpace() == Target.getStackAddressSpace(getLangOpts()) ||
       (Ty.getAddressSpace() == LangAS::opencl_private && getLangOpts().OpenCL));
 
   AutoVarEmission emission(D);
@@ -2004,8 +2004,9 @@ void CodeGenFunction::EmitParmDecl(const VarDecl &D, ParamValue Arg,
     auto AllocaAS = CGM.getASTAllocaAddressSpace();
     auto *V = DeclPtr.getPointer();
     auto SrcLangAS = getLangOpts().OpenCL ? LangAS::opencl_private : AllocaAS;
-    auto DestLangAS =
-        getLangOpts().OpenCL ? LangAS::opencl_private : LangAS::Default;
+    auto DestLangAS = getLangOpts().OpenCL
+        ? LangAS::opencl_private
+        : getTarget().getStackAddressSpace(getLangOpts());
     if (SrcLangAS != DestLangAS) {
       assert(getContext().getTargetAddressSpace(SrcLangAS) ==
              CGM.getDataLayout().getAllocaAddrSpace());
