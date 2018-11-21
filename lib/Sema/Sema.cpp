@@ -118,6 +118,8 @@ public:
           AnnotTok.setLocation(Loc);
           AnnotTok.setAnnotationEndLoc(Loc);
           AnnotTok.setAnnotationValue(reinterpret_cast<void *>(
+              static_cast<uintptr_t>(
+                  S->Context.getTargetInfo().getTargetOpts().SystemAddrSpace) |
               static_cast<uintptr_t>(Sema::PSK_Push_Set) << 24));
           S->getPreprocessor().EnterToken(AnnotTok);
         }

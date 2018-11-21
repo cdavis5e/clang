@@ -72,6 +72,9 @@ public:
   /// The default address space for pointers.
   LangAS DefaultAddrSpace = LangAS::Default;
 
+  /// The default address space for pointers in a system header.
+  LangAS SystemAddrSpace = LangAS::Default;
+
   // The code model to be used as specified by the user. Corresponds to
   // CodeModel::Model enum defined in include/llvm/Support/CodeGen.h, plus
   // "default" for the case when the user has not explicitly specified a

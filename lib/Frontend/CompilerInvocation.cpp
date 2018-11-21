@@ -3020,6 +3020,18 @@ static void ParseTargetArgs(TargetOptions &Opts, ArgList &Args,
     else
       Opts.DefaultAddrSpace = AS;
   }
+  if (Arg *A = Args.getLastArg(OPT_msystem_address_space_EQ)) {
+    StringRef Value = A->getValue();
+    auto AS = llvm::StringSwitch<LangAS>(Value)
+                                 .Case("default", LangAS::Default)
+                                 .Case("ptr32", LangAS::ptr32)
+                                 .Default(LangAS(-1));
+    if (AS == LangAS(-1))
+      Diags.Report(diag::err_drv_invalid_value) << A->getAsString(Args)
+                                                << Value;
+    else
+      Opts.SystemAddrSpace = AS;
+  }
 }
 
 bool CompilerInvocation::CreateFromArgs(CompilerInvocation &Res,

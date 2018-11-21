@@ -3801,6 +3801,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
       Triple.getEnvironment() == llvm::Triple::Wine32)
     CmdArgs.push_back("-mdefault-address-space=ptr32");
 
+  Args.AddLastArg(CmdArgs, options::OPT_msystem_address_space_EQ);
+
   RenderTargetOptions(Triple, Args, KernelOrKext, CmdArgs);
 
   // These two are potentially updated by AddClangCLArgs.
