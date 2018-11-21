@@ -77,6 +77,7 @@ namespace sema {
 class SemaPPCallbacks : public PPCallbacks {
   Sema *S = nullptr;
   llvm::SmallVector<SourceLocation, 8> IncludeStack;
+  unsigned SysCount = 0;  // Number of times we entered a system context.
 
 public:
   void set(Sema &S) { this->S = &S; }
@@ -97,13 +98,51 @@ public:
         S->DiagnoseNonDefaultPragmaPack(
             Sema::PragmaPackDiagnoseKind::NonDefaultStateAtInclude, IncludeLoc);
       }
-      break;
     }
+      LLVM_FALLTHROUGH;
+    case RenameFile:
+      if (S->LangOpts.Interop6432 && SrcMgr::isSystem(FileType)) {
+        // When a system context is entered, it's as though this:
+        //   #pragma clang default_addr_space(push, default)
+        // were executed. Instead of pushing multiple times onto the stack,
+        // though, we just keep track of the number of times we entered a
+        // system file, and don't pop until we leave the last one.
+        if (SysCount++ == 0) {
+          // Simply manipulating the stack directly causes ordering problems
+          // when including a file just after executing a real
+          // default_addr_space pragma. Instead, add an annotation token as the
+          // pragma does. Then the pushes will happen in the correct order.
+          Token AnnotTok;
+          AnnotTok.startToken();
+          AnnotTok.setKind(tok::annot_pragma_default_as);
+          AnnotTok.setLocation(Loc);
+          AnnotTok.setAnnotationEndLoc(Loc);
+          AnnotTok.setAnnotationValue(reinterpret_cast<void *>(
+              static_cast<uintptr_t>(Sema::PSK_Push_Set) << 24));
+          S->getPreprocessor().EnterToken(AnnotTok);
+        }
+      }
+      break;
     case ExitFile:
       if (!IncludeStack.empty())
         S->DiagnoseNonDefaultPragmaPack(
             Sema::PragmaPackDiagnoseKind::ChangedStateAtExit,
             IncludeStack.pop_back_val());
+      if (S->LangOpts.Interop6432 && SysCount > 0) {
+        // Conversely, when it is left, it is as though:
+        //   #pragma clang default_addr_space(pop)
+        // were executed.
+        if (--SysCount == 0) {
+          Token AnnotTok;
+          AnnotTok.startToken();
+          AnnotTok.setKind(tok::annot_pragma_default_as);
+          AnnotTok.setLocation(Loc);
+          AnnotTok.setAnnotationEndLoc(Loc);
+          AnnotTok.setAnnotationValue(reinterpret_cast<void *>(
+              static_cast<uintptr_t>(Sema::PSK_Pop) << 24));
+          S->getPreprocessor().EnterToken(AnnotTok);
+        }
+      }
       break;
     default:
       break;
