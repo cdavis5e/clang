@@ -296,7 +296,6 @@ def OpenCL : LangOpt<"OpenCL">;
 def RenderScript : LangOpt<"RenderScript">;
 def ObjC : LangOpt<"ObjC1">;
 def BlocksSupported : LangOpt<"Blocks">;
-def Interop6432 : LangOpt<"Interop6432">;
 
 // Defines targets for target-specific attributes. Empty lists are unchecked.
 class TargetSpec {
@@ -3094,10 +3093,4 @@ def AlwaysDestroy : InheritableAttr {
   let Spellings = [Clang<"always_destroy", 0>];
   let Subjects = SubjectList<[Var]>;
   let Documentation = [AlwaysDestroyDocs];
-}
-
-def Ptr32CallSeg : TypeAttr {
-  let Spellings = [];
-  let Args = [UnsignedArgument<"Selector">];
-  let Documentation = [Undocumented];
 }

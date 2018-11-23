@@ -1158,13 +1158,6 @@ public:
   /// space.
   QualType removeAddrSpaceQualType(QualType T) const;
 
-  /// Return the uniqued reference to the type for a segment-qualified type
-  /// with the specified type and target segment.
-  ///
-  /// The resulting type has a union of the qualifiers from T and the segment
-  /// selector. If T already has a segment selector, it is silently replaced.
-  QualType getBasedSegmentQualType(QualType T, uint16_t SegSelector) const;
-
   /// Apply Objective-C protocol qualifiers to the given type.
   /// \param allowOnPointerType specifies if we can apply protocol
   /// qualifiers on ObjCObjectPointerType. It can be set to true when

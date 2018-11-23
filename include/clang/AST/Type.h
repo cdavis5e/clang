@@ -133,12 +133,11 @@ using CanQualType = CanQual<Type>;
 #include "clang/AST/TypeNodes.def"
 
 /// The collection of all-type qualifiers we support.
-/// Clang supports eight independent qualifiers:
+/// Clang supports five independent qualifiers:
 /// * C99: const, volatile, and restrict
-/// * MS: __unaligned, __based
+/// * MS: __unaligned
 /// * Embedded C (TR18037): address spaces
-/// * Objective C: GC attributes (none, weak, or strong), lifetime (none,
-///                unsafe-unretained, weak, strong, autoreleasing)
+/// * Objective C: the GC attributes (none, weak, or strong)
 class Qualifiers {
 public:
   enum TQ { // NOTE: These flags must be kept in sync with DeclSpec::TQ.
@@ -223,12 +222,6 @@ public:
       L.removeAddressSpace();
       R.removeAddressSpace();
     }
-
-    if (L.getBasedSegment() == R.getBasedSegment()) {
-      Q.setBasedSegment(L.getBasedSegment());
-      L.removeBasedSegment();
-      R.removeBasedSegment();
-    }
     return Q;
   }
 
@@ -251,14 +244,14 @@ public:
   }
 
   // Deserialize qualifiers from an opaque representation.
-  static Qualifiers fromOpaqueValue(uint64_t opaque) {
+  static Qualifiers fromOpaqueValue(unsigned opaque) {
     Qualifiers Qs;
     Qs.Mask = opaque;
     return Qs;
   }
 
   // Serialize these qualifiers into an opaque representation.
-  uint64_t getAsOpaqueValue() const {
+  unsigned getAsOpaqueValue() const {
     return Mask;
   }
 
@@ -284,7 +277,7 @@ public:
   void addRestrict() { Mask |= Restrict; }
 
   bool hasCVRQualifiers() const { return getCVRQualifiers(); }
-  unsigned getCVRQualifiers() const { return (unsigned)(Mask & CVRMask); }
+  unsigned getCVRQualifiers() const { return Mask & CVRMask; }
   void setCVRQualifiers(unsigned mask) {
     assert(!(mask & ~CVRMask) && "bitmask contains non-CVR bits");
     Mask = (Mask & ~CVRMask) | mask;
@@ -361,7 +354,7 @@ public:
 
   bool hasAddressSpace() const { return Mask & AddressSpaceMask; }
   LangAS getAddressSpace() const {
-    return static_cast<LangAS>((Mask & AddressSpaceMask) >> AddressSpaceShift);
+    return static_cast<LangAS>(Mask >> AddressSpaceShift);
   }
   bool hasTargetSpecificAddressSpace() const {
     return isTargetAddressSpace(getAddressSpace());
@@ -383,7 +376,7 @@ public:
   void setAddressSpace(LangAS space) {
     assert((unsigned)space <= MaxAddressSpace);
     Mask = (Mask & ~AddressSpaceMask)
-         | (((uint64_t) space) << AddressSpaceShift);
+         | (((uint32_t) space) << AddressSpaceShift);
   }
   void removeAddressSpace() { setAddressSpace(LangAS::Default); }
   void addAddressSpace(LangAS space) {
@@ -391,30 +384,15 @@ public:
     setAddressSpace(space);
   }
 
-  bool hasBasedSegment() const { return Mask & BasedSegmentMask; }
-  uint16_t getBasedSegment() const {
-    return static_cast<uint16_t>(
-        (Mask & BasedSegmentMask) >> BasedSegmentShift);
-  }
-  void setBasedSegment(uint16_t Sel) {
-    Mask = (Mask & ~BasedSegmentMask)
-         | (static_cast<uint64_t>(Sel) << BasedSegmentShift);
-  }
-  void removeBasedSegment() { setBasedSegment(0); }
-  void addBasedSegment(uint16_t Sel) {
-    assert(Sel != 0);
-    setBasedSegment(Sel);
-  }
-
   // Fast qualifiers are those that can be allocated directly
   // on a QualType object.
   bool hasFastQualifiers() const { return getFastQualifiers(); }
-  unsigned getFastQualifiers() const { return (unsigned)(Mask & FastMask); }
+  unsigned getFastQualifiers() const { return Mask & FastMask; }
   void setFastQualifiers(unsigned mask) {
     assert(!(mask & ~FastMask) && "bitmask contains non-fast qualifier bits");
     Mask = (Mask & ~FastMask) | mask;
   }
-  void removeFastQualifiers(uint64_t mask) {
+  void removeFastQualifiers(unsigned mask) {
     assert(!(mask & ~FastMask) && "bitmask contains non-fast qualifier bits");
     Mask &= ~mask;
   }
@@ -453,8 +431,6 @@ public:
         addObjCGCAttr(Q.getObjCGCAttr());
       if (Q.hasObjCLifetime())
         addObjCLifetime(Q.getObjCLifetime());
-      if (Q.hasBasedSegment())
-        addBasedSegment(Q.getBasedSegment());
     }
   }
 
@@ -472,8 +448,6 @@ public:
         removeObjCLifetime();
       if (getAddressSpace() == Q.getAddressSpace())
         removeAddressSpace();
-      if (getBasedSegment() == Q.getBasedSegment())
-        removeBasedSegment();
     }
   }
 
@@ -486,8 +460,6 @@ public:
            !hasObjCGCAttr() || !qs.hasObjCGCAttr());
     assert(getObjCLifetime() == qs.getObjCLifetime() ||
            !hasObjCLifetime() || !qs.hasObjCLifetime());
-    assert(getBasedSegment() == qs.getBasedSegment() ||
-           !hasBasedSegment() || !qs.hasBasedSegment());
     Mask |= qs.Mask;
   }
 
@@ -593,20 +565,19 @@ public:
   }
 
 private:
-  // bits:     |0 1 2|3|4 .. 5|6  ..  8|9   ...   31|32   ...  47|
-  //           |C R V|U|GCAttr|Lifetime|AddressSpace|BasedSegment|
-  uint64_t Mask = 0;
+  // bits:     |0 1 2|3|4 .. 5|6  ..  8|9   ...   31|
+  //           |C R V|U|GCAttr|Lifetime|AddressSpace|
+  uint32_t Mask = 0;
 
-  static const uint64_t UMask = 0x8;
+  static const uint32_t UMask = 0x8;
   static const uint32_t UShift = 3;
-  static const uint64_t GCAttrMask = 0x30;
+  static const uint32_t GCAttrMask = 0x30;
   static const uint32_t GCAttrShift = 4;
-  static const uint64_t LifetimeMask = 0x1C0;
+  static const uint32_t LifetimeMask = 0x1C0;
   static const uint32_t LifetimeShift = 6;
-  static const uint64_t AddressSpaceMask = 0xFFFFFE00;
+  static const uint32_t AddressSpaceMask =
+      ~(CVRMask | UMask | GCAttrMask | LifetimeMask);
   static const uint32_t AddressSpaceShift = 9;
-  static const uint64_t BasedSegmentMask = 0xFFFF00000000;
-  static const uint32_t BasedSegmentShift = 32;
 };
 
 /// A std::pair-like structure for storing a qualified type split
@@ -1108,9 +1079,6 @@ public:
     return getQualifiers().hasStrongOrWeakObjCLifetime();
   }
 
-  /// Return the segment selector of this type.
-  inline uint16_t getBasedSegment() const;
-
   // true when Type is objc's weak and weak is enabled but ARC isn't.
   bool isNonWeakInMRRWithObjCWeak(const ASTContext &Context) const;
 
@@ -1379,9 +1347,6 @@ public:
 
   bool hasAddressSpace() const { return Quals.hasAddressSpace(); }
   LangAS getAddressSpace() const { return Quals.getAddressSpace(); }
-
-  bool hasBasedSegment() const { return Quals.hasBasedSegment(); }
-  uint16_t getBasedSegment() const { return Quals.getBasedSegment(); }
 
   const Type *getBaseType() const { return BaseType; }
 
@@ -6204,11 +6169,6 @@ inline LangAS QualType::getAddressSpace() const {
 /// Return the gc attribute of this type.
 inline Qualifiers::GC QualType::getObjCGCAttr() const {
   return getQualifiers().getObjCGCAttr();
-}
-
-/// Return the segment selector of this type.
-inline uint16_t QualType::getBasedSegment() const {
-  return getQualifiers().getBasedSegment();
 }
 
 inline FunctionType::ExtInfo getFunctionExtInfo(const Type &t) {

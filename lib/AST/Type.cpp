@@ -65,10 +65,7 @@ bool Qualifiers::isStrictSupersetOf(Qualifiers Other) const {
      (hasAddressSpace()&& !Other.hasAddressSpace())) &&
     // Lifetime qualifier superset.
     ((getObjCLifetime() == Other.getObjCLifetime()) ||
-     (hasObjCLifetime() && !Other.hasObjCLifetime())) &&
-    // Target segment superset.
-    ((getBasedSegment() == Other.getBasedSegment()) ||
-     (hasBasedSegment() && !Other.hasBasedSegment()));
+     (hasObjCLifetime() && !Other.hasObjCLifetime()));
 }
 
 const IdentifierInfo* QualType::getBaseTypeIdentifier() const {
