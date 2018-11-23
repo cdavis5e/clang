@@ -193,7 +193,6 @@ class Parser : public CodeCompletionHandler {
   std::unique_ptr<PragmaHandler> STDCUnknownHandler;
   std::unique_ptr<PragmaHandler> AttributePragmaHandler;
   std::unique_ptr<PragmaHandler> DefaultASHandler;
-  std::unique_ptr<PragmaHandler> Ptr32CallSegHandler;
 
   std::unique_ptr<CommentHandler> CommentSemaHandler;
 
@@ -703,8 +702,6 @@ private:
   void HandlePragmaAttribute();
 
   void HandlePragmaDefaultAS();
-
-  void HandlePragmaPtr32CallSeg();
 
   /// GetLookAheadToken - This peeks ahead N tokens and returns that token
   /// without consuming any tokens.  LookAhead(0) returns 'Tok', LookAhead(1)

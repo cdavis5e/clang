@@ -825,10 +825,6 @@ ANNOTATION(pragma_attribute)
 // #pragma clang default_addr_space(...)
 ANNOTATION(pragma_default_as)
 
-// Annotation for the 32-bit segment pragma directive -
-// #pragma clang ptr32_call_seg(...)
-ANNOTATION(pragma_ptr32_call_seg)
-
 // Annotations for module import translated from #include etc.
 ANNOTATION(module_include)
 ANNOTATION(module_begin)

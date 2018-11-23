@@ -513,10 +513,6 @@ public:
   /// optimizations are currently "on", this is set to an invalid location.
   SourceLocation OptimizeOffPragmaLocation;
 
-  /// The current segment selector to use for calls to __ptr32 function
-  /// pointers.
-  uint16_t Ptr32CallSegSelector;
-
   /// Flag indicating if Sema is building a recovery call expression.
   ///
   /// This flag is used to avoid building recovery call expressions
@@ -8550,9 +8546,6 @@ public:
   /// Called on well-formed \#pragma clang default_addr_space(...).
   void ActOnPragmaDefaultAS(SourceLocation Loc, PragmaMsStackAction Action,
                             LangAS AS);
-
-  /// Called on well-formed \#pragma clang ptr32_call_seg(...).
-  void ActOnPragmaPtr32CallSeg(uint16_t Selector);
 
   //===--------------------------------------------------------------------===//
   // C++ Coroutines TS

@@ -592,10 +592,6 @@ bool Parser::ParseTopLevelDecl(DeclGroupPtrTy &Result) {
     HandlePragmaDefaultAS();
     return false;
 
-  case tok::annot_pragma_ptr32_call_seg:
-    HandlePragmaPtr32CallSeg();
-    return false;
-
   case tok::eof:
     // Late template parsing can begin.
     if (getLangOpts().DelayedTemplateParsing)

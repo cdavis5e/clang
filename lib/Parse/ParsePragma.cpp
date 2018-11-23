@@ -265,13 +265,6 @@ struct PragmaDefaultASHandler : public PragmaHandler {
                     Token &FirstToken) override;
 };
 
-/// "\#pragma clang ptr32_call_seg(...)"
-struct PragmaPtr32CallSegHandler : public PragmaHandler {
-  PragmaPtr32CallSegHandler() : PragmaHandler("ptr32_call_seg") {}
-  void HandlePragma(Preprocessor &PP, PragmaIntroducerKind Introducer,
-                    Token &FirstToken) override;
-};
-
 }  // end namespace
 
 void Parser::initializePragmaHandlers() {
@@ -392,11 +385,6 @@ void Parser::initializePragmaHandlers() {
 
   DefaultASHandler.reset(new PragmaDefaultASHandler());
   PP.AddPragmaHandler("clang", DefaultASHandler.get());
-
-  if (getLangOpts().Interop6432) {
-    Ptr32CallSegHandler.reset(new PragmaPtr32CallSegHandler());
-    PP.AddPragmaHandler("clang", Ptr32CallSegHandler.get());
-  }
 }
 
 void Parser::resetPragmaHandlers() {
@@ -505,11 +493,6 @@ void Parser::resetPragmaHandlers() {
 
   PP.RemovePragmaHandler("clang", DefaultASHandler.get());
   DefaultASHandler.reset();
-
-  if (getLangOpts().Interop6432) {
-    PP.RemovePragmaHandler("clang", Ptr32CallSegHandler.get());
-    Ptr32CallSegHandler.reset();
-  }
 }
 
 /// Handle the annotation token produced for #pragma unused(...)
@@ -1584,15 +1567,6 @@ void Parser::HandlePragmaDefaultAS() {
   auto AS = static_cast<LangAS>(Value & 0xFFFFFF);
   SourceLocation PragmaLoc = ConsumeAnnotationToken();
   Actions.ActOnPragmaDefaultAS(PragmaLoc, Action, AS);
-}
-
-void Parser::HandlePragmaPtr32CallSeg() {
-  assert(Tok.is(tok::annot_pragma_ptr32_call_seg) &&
-         "Expected #pragma clang ptr32_call_seg token");
-  auto Sel = static_cast<uint16_t>(reinterpret_cast<uintptr_t>(
-      Tok.getAnnotationValue()));
-  Actions.ActOnPragmaPtr32CallSeg(Sel);
-  ConsumeAnnotationToken();
 }
 
 // #pragma GCC visibility comes in two variants:
@@ -3350,49 +3324,4 @@ void PragmaDefaultASHandler::HandlePragma(Preprocessor &PP,
       reinterpret_cast<void *>((static_cast<uintptr_t>(AS) & 0xFFFFFF) |
                                (static_cast<uintptr_t>(Action) << 24)));
   PP.EnterToken(AnnotTok);
-}
-
-void PragmaPtr32CallSegHandler::HandlePragma(Preprocessor &PP,
-                                             PragmaIntroducerKind Introducer,
-                                             Token &Tok) {
-  PP.Lex(Tok);
-
-  if (Tok.isNot(tok::l_paren)) {
-    PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_lparen)
-        << "clang ptr32_call_seg";
-    return;
-  }
-  PP.Lex(Tok);
-
-  uint64_t Value;
-  if (Tok.isNot(tok::numeric_constant) ||
-      !PP.parseSimpleIntegerLiteral(Tok, Value) || Value > 65535) {
-    PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_integer)
-        << 0 << 65535 << "clang ptr32_call_seg";
-    return;
-  }
-
-  if (Tok.isNot(tok::r_paren)) {
-    PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_rparen)
-        << "clang ptr32_call_seg";
-    return;
-  }
-  PP.Lex(Tok);
-
-  if (Tok.isNot(tok::eod)) {
-    PP.Diag(Tok.getLocation(), diag::warn_pragma_extra_tokens_at_eol)
-        << "clang ptr32_call_seg";
-    return;
-  }
-
-  // Generate the annotated pragma token.
-  auto TokenArray = llvm::make_unique<Token[]>(1);
-  TokenArray[0].startToken();
-  TokenArray[0].setKind(tok::annot_pragma_ptr32_call_seg);
-  TokenArray[0].setLocation(Tok.getLocation());
-  TokenArray[0].setAnnotationEndLoc(Tok.getLocation());
-  TokenArray[0].setAnnotationValue(
-      reinterpret_cast<void *>(static_cast<uintptr_t>(Value)));
-  PP.EnterTokenStream(std::move(TokenArray), 1,
-                      /*DisableMacroExpansion=*/false);
 }
