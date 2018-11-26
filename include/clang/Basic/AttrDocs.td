@@ -3615,3 +3615,44 @@ This attribute is similar to its unsuffixed counterpart, only it applies in
   }];
 }
 
+def Ptr32ThunkPrefixDocs : Documentation {
+  let Category = DocCatFunction;
+  let Content = [{
+The ``ptr32_thunk_prefix`` pragma sets the prefix used when naming
+automatically generated thunks for a 32-bit-callable function, as well as the
+prefix used for naming thunks for invoking 32-bit function pointers. It applies
+to all functions defined after the pragma. It may also be set on the command
+line with the ``-minterop64-32-thunk-prefix`` option. If not specified, the
+default is ``__i386_on_x86_64_``. This attribute may only be used when 64-32
+interop has been enabled.
+  }];
+}
+
+def Ptr32CS32NameDocs : Documentation {
+  let Category = DocCatFunction;
+  let Content = [{
+The ``ptr32_cs32_name`` pragma sets the name of the variable holding the 32-bit
+code segment selector to use to invoke 32-bit functions. Any call to a 32-bit
+function pointer will use the selector in this variable as the target segment
+in the far call. It applies to all functions defined after the pragma. It may
+also be set on the command line with the ``-minterop64-32-cs32-name`` option. If
+not specified, the default is ``__i386_on_x86_64_cs32``. This attribute may only
+be used when 64-32 interop has been enabled.
+  }];
+}
+
+def Ptr32CS64NameDocs : Documentation {
+  let Category = DocCatFunction;
+  let Content = [{
+The ``ptr32_cs64_name`` pragma sets the name of the variable holding the 64-bit
+code segment selector to use to invoke 64-bit functions. The 32-bit side of
+any automatically generated thunk will use the selector in this variable as the
+target segment in the far call. In addition, any call to a 32-bit function
+pointer will check the selector in this variable against the current ``%cs`` to
+ensure that it is possible to call 32-bit code. It applies to all functions
+defined after the pragma. It may also be set on the command line with the
+``-minterop64-32-cs64-name`` option. If not specified, the default is
+``__i386_on_x86_64_cs64``. This attribute may only be used when 64-32 interop
+has been enabled.
+  }];
+}

@@ -385,6 +385,15 @@ void Parser::initializePragmaHandlers() {
 
   DefaultASHandler.reset(new PragmaDefaultASHandler());
   PP.AddPragmaHandler("clang", DefaultASHandler.get());
+
+  if (getLangOpts().Interop6432) {
+    Ptr32ThunkPrefixHandler.reset(new PragmaMSPragma("ptr32_thunk_prefix"));
+    PP.AddPragmaHandler("clang", Ptr32ThunkPrefixHandler.get());
+    Ptr32CS32NameHandler.reset(new PragmaMSPragma("ptr32_cs32_name"));
+    PP.AddPragmaHandler("clang", Ptr32CS32NameHandler.get());
+    Ptr32CS64NameHandler.reset(new PragmaMSPragma("ptr32_cs64_name"));
+    PP.AddPragmaHandler("clang", Ptr32CS64NameHandler.get());
+  }
 }
 
 void Parser::resetPragmaHandlers() {
@@ -493,6 +502,15 @@ void Parser::resetPragmaHandlers() {
 
   PP.RemovePragmaHandler("clang", DefaultASHandler.get());
   DefaultASHandler.reset();
+
+  if (getLangOpts().Interop6432) {
+    PP.RemovePragmaHandler("clang", Ptr32ThunkPrefixHandler.get());
+    Ptr32ThunkPrefixHandler.reset();
+    PP.RemovePragmaHandler("clang", Ptr32CS32NameHandler.get());
+    Ptr32CS32NameHandler.reset();
+    PP.RemovePragmaHandler("clang", Ptr32CS64NameHandler.get());
+    Ptr32CS64NameHandler.reset();
+  }
 }
 
 /// Handle the annotation token produced for #pragma unused(...)
@@ -766,7 +784,10 @@ void Parser::HandlePragmaMSPragma() {
     .Case("const_seg", &Parser::HandlePragmaMSSegment)
     .Case("code_seg", &Parser::HandlePragmaMSSegment)
     .Case("section", &Parser::HandlePragmaMSSection)
-    .Case("init_seg", &Parser::HandlePragmaMSInitSeg);
+    .Case("init_seg", &Parser::HandlePragmaMSInitSeg)
+    .Case("ptr32_thunk_prefix", &Parser::HandlePragmaPtr32ThunkPrefix)
+    .Case("ptr32_cs32_name", &Parser::HandlePragmaPtr32CS32Name)
+    .Case("ptr32_cs64_name", &Parser::HandlePragmaPtr32CS64Name);
 
   if (!(this->*Handler)(PragmaName, PragmaLocation)) {
     // Pragma handling failed, and has been diagnosed.  Slurp up the tokens
@@ -1567,6 +1588,102 @@ void Parser::HandlePragmaDefaultAS() {
   auto AS = static_cast<LangAS>(Value & 0xFFFFFF);
   SourceLocation PragmaLoc = ConsumeAnnotationToken();
   Actions.ActOnPragmaDefaultAS(PragmaLoc, Action, AS);
+}
+
+bool Parser::HandlePragmaPtr32ThunkPrefix(StringRef PragmaName,
+                                          SourceLocation PragmaLocation) {
+  if (ExpectAndConsume(tok::l_paren, diag::warn_pragma_expected_lparen,
+                       PragmaName))
+    return false;
+
+  StringLiteral *Prefix = nullptr;
+  if (!Tok.is(tok::string_literal)) {
+    PP.Diag(PragmaLocation, diag::warn_pragma_expected_string) << PragmaName;
+    return false;
+  }
+
+  ExprResult StringResult = ParseStringLiteralExpression();
+  if (StringResult.isInvalid())
+    return false;
+  Prefix = cast<StringLiteral>(StringResult.get());
+  if (Prefix->getCharByteWidth() != 1) {
+    PP.Diag(PragmaLocation, diag::warn_pragma_expected_non_wide_string)
+        << PragmaName;
+    return false;
+  }
+
+  if (ExpectAndConsume(tok::r_paren, diag::warn_pragma_expected_rparen,
+                       PragmaName) ||
+      ExpectAndConsume(tok::eof, diag::warn_pragma_extra_tokens_at_eol,
+                       PragmaName))
+    return false;
+
+  Actions.ActOnPragmaPtr32ThunkPrefix(PragmaLocation, Prefix);
+  return true;
+}
+
+bool Parser::HandlePragmaPtr32CS32Name(StringRef PragmaName,
+                                       SourceLocation PragmaLocation) {
+  if (ExpectAndConsume(tok::l_paren, diag::warn_pragma_expected_lparen,
+                       PragmaName))
+    return false;
+
+  StringLiteral *SymName = nullptr;
+  if (!Tok.is(tok::string_literal)) {
+    PP.Diag(PragmaLocation, diag::warn_pragma_expected_string) << PragmaName;
+    return false;
+  }
+
+  ExprResult StringResult = ParseStringLiteralExpression();
+  if (StringResult.isInvalid())
+    return false;
+  SymName = cast<StringLiteral>(StringResult.get());
+  if (SymName->getCharByteWidth() != 1) {
+    PP.Diag(PragmaLocation, diag::warn_pragma_expected_non_wide_string)
+        << PragmaName;
+    return false;
+  }
+
+  if (ExpectAndConsume(tok::r_paren, diag::warn_pragma_expected_rparen,
+                       PragmaName) ||
+      ExpectAndConsume(tok::eof, diag::warn_pragma_extra_tokens_at_eol,
+                       PragmaName))
+    return false;
+
+  Actions.ActOnPragmaPtr32CS32Name(PragmaLocation, SymName);
+  return true;
+}
+
+bool Parser::HandlePragmaPtr32CS64Name(StringRef PragmaName,
+                                       SourceLocation PragmaLocation) {
+  if (ExpectAndConsume(tok::l_paren, diag::warn_pragma_expected_lparen,
+                       PragmaName))
+    return false;
+
+  StringLiteral *SymName = nullptr;
+  if (!Tok.is(tok::string_literal)) {
+    PP.Diag(PragmaLocation, diag::warn_pragma_expected_string) << PragmaName;
+    return false;
+  }
+
+  ExprResult StringResult = ParseStringLiteralExpression();
+  if (StringResult.isInvalid())
+    return false;
+  SymName = cast<StringLiteral>(StringResult.get());
+  if (SymName->getCharByteWidth() != 1) {
+    PP.Diag(PragmaLocation, diag::warn_pragma_expected_non_wide_string)
+        << PragmaName;
+    return false;
+  }
+
+  if (ExpectAndConsume(tok::r_paren, diag::warn_pragma_expected_rparen,
+                       PragmaName) ||
+      ExpectAndConsume(tok::eof, diag::warn_pragma_extra_tokens_at_eol,
+                       PragmaName))
+    return false;
+
+  Actions.ActOnPragmaPtr32CS64Name(PragmaLocation, SymName);
+  return true;
 }
 
 // #pragma GCC visibility comes in two variants:

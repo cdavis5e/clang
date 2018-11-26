@@ -75,6 +75,18 @@ public:
   /// The default address space for pointers in a system header.
   LangAS SystemAddrSpace = LangAS::Default;
 
+  /// The default prefix to use for automatically generated 64-32 interop
+  /// thunks.
+  std::string Ptr32ThunkPrefix;
+
+  /// The default name to use for the variable holding the 32-bit code
+  /// segment selector.
+  std::string Ptr32CS32Name;
+
+  /// The default name to use for the variable holding the 64-bit code
+  /// segment selector.
+  std::string Ptr32CS64Name;
+
   // The code model to be used as specified by the user. Corresponds to
   // CodeModel::Model enum defined in include/llvm/Support/CodeGen.h, plus
   // "default" for the case when the user has not explicitly specified a

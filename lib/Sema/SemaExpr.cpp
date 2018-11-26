@@ -13290,6 +13290,17 @@ void Sema::ActOnBlockStart(SourceLocation CaretLoc, Scope *CurScope) {
   // cleanups from the enclosing full-expression.
   PushExpressionEvaluationContext(
       ExpressionEvaluationContext::PotentiallyEvaluated);
+
+  // Apply implicit 64/32 interop parameters if active.
+  if (CurPtr32ThunkPrefix)
+    Block->addAttr(Ptr32ThunkPrefixAttr::CreateImplicit(
+        Context, CurPtr32ThunkPrefix->getString(), CurPtr32ThunkPrefixLoc));
+  if (CurPtr32CS32Name)
+    Block->addAttr(Ptr32CS32NameAttr::CreateImplicit(
+        Context, CurPtr32CS32Name->getString(), CurPtr32CS32NameLoc));
+  if (CurPtr32CS64Name)
+    Block->addAttr(Ptr32CS64NameAttr::CreateImplicit(
+        Context, CurPtr32CS64Name->getString(), CurPtr32CS64NameLoc));
 }
 
 void Sema::ActOnBlockArguments(SourceLocation CaretLoc, Declarator &ParamInfo,

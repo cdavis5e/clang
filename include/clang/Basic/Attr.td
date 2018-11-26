@@ -296,6 +296,7 @@ def OpenCL : LangOpt<"OpenCL">;
 def RenderScript : LangOpt<"RenderScript">;
 def ObjC : LangOpt<"ObjC1">;
 def BlocksSupported : LangOpt<"Blocks">;
+def Interop6432 : LangOpt<"Interop6432">;
 
 // Defines targets for target-specific attributes. Empty lists are unchecked.
 class TargetSpec {
@@ -3093,4 +3094,43 @@ def AlwaysDestroy : InheritableAttr {
   let Spellings = [Clang<"always_destroy", 0>];
   let Subjects = SubjectList<[Var]>;
   let Documentation = [AlwaysDestroyDocs];
+}
+
+def Ptr32ThunkPrefix : InheritableAttr {
+  let Spellings = [Pragma<"clang", "ptr32_thunk_prefix">];
+  let Subjects = SubjectList<[Function, ObjCMethod, Block]>;
+  let Args = [StringArgument<"Prefix">];
+  let LangOpts = [Interop6432];
+  let Documentation = [Ptr32ThunkPrefixDocs];
+  let AdditionalMembers = [{
+  void printPrettyPragma(raw_ostream &OS, const PrintingPolicy &Policy) const {
+    OS << " (\"" << getPrefix() << "\")";
+  }
+  }];
+}
+
+def Ptr32CS32Name : InheritableAttr {
+  let Spellings = [Pragma<"clang", "ptr32_cs32_name">];
+  let Subjects = SubjectList<[Function, ObjCMethod, Block]>;
+  let Args = [StringArgument<"Name">];
+  let LangOpts = [Interop6432];
+  let Documentation = [Ptr32CS32NameDocs];
+  let AdditionalMembers = [{
+  void printPrettyPragma(raw_ostream &OS, const PrintingPolicy &Policy) const {
+    OS << " (\"" << getName() << "\")";
+  }
+  }];
+}
+
+def Ptr32CS64Name : InheritableAttr {
+  let Spellings = [Pragma<"clang", "ptr32_cs64_name">];
+  let Subjects = SubjectList<[Function, ObjCMethod, Block]>;
+  let Args = [StringArgument<"Name">];
+  let LangOpts = [Interop6432];
+  let Documentation = [Ptr32CS64NameDocs];
+  let AdditionalMembers = [{
+  void printPrettyPragma(raw_ostream &OS, const PrintingPolicy &Policy) const {
+    OS << " (\"" << getName() << "\")";
+  }
+  }];
 }

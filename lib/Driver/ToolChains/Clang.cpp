@@ -3803,6 +3803,32 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
 
   Args.AddLastArg(CmdArgs, options::OPT_msystem_address_space_EQ);
 
+  // Set parameters for 64/32-bit interop.
+  if (Arg *A = Args.getLastArg(options::OPT_minterop64_32_thunk_prefix_EQ)) {
+    if (Triple.getEnvironment() != llvm::Triple::Wine32) {
+      D.Diag(clang::diag::err_drv_argument_only_allowed_with)
+          << A->getBaseArg().getAsString(Args)
+          << "-mwine32";
+    }
+    Args.AddLastArg(CmdArgs, options::OPT_minterop64_32_thunk_prefix_EQ);
+  }
+  if (Arg *A = Args.getLastArg(options::OPT_minterop64_32_cs32_name_EQ)) {
+    if (Triple.getEnvironment() != llvm::Triple::Wine32) {
+      D.Diag(clang::diag::err_drv_argument_only_allowed_with)
+          << A->getBaseArg().getAsString(Args)
+          << "-mwine32";
+    }
+    Args.AddLastArg(CmdArgs, options::OPT_minterop64_32_cs32_name_EQ);
+  }
+  if (Arg *A = Args.getLastArg(options::OPT_minterop64_32_cs64_name_EQ)) {
+    if (Triple.getEnvironment() != llvm::Triple::Wine32) {
+      D.Diag(clang::diag::err_drv_argument_only_allowed_with)
+          << A->getBaseArg().getAsString(Args)
+          << "-mwine32";
+    }
+    Args.AddLastArg(CmdArgs, options::OPT_minterop64_32_cs64_name_EQ);
+  }
+
   RenderTargetOptions(Triple, Args, KernelOrKext, CmdArgs);
 
   // These two are potentially updated by AddClangCLArgs.

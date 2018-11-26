@@ -4635,6 +4635,17 @@ Decl *Sema::ActOnMethodDeclaration(
   ObjCMethod->setObjCDeclQualifier(
     CvtQTToAstBitMask(ReturnQT.getObjCDeclQualifier()));
 
+  // Apply implicit 64/32 interop parameters if active.
+  if (CurPtr32ThunkPrefix)
+    ObjCMethod->addAttr(Ptr32ThunkPrefixAttr::CreateImplicit(
+        Context, CurPtr32ThunkPrefix->getString(), CurPtr32ThunkPrefixLoc));
+  if (CurPtr32CS32Name)
+    ObjCMethod->addAttr(Ptr32CS32NameAttr::CreateImplicit(
+        Context, CurPtr32CS32Name->getString(), CurPtr32CS32NameLoc));
+  if (CurPtr32CS64Name)
+    ObjCMethod->addAttr(Ptr32CS64NameAttr::CreateImplicit(
+        Context, CurPtr32CS64Name->getString(), CurPtr32CS64NameLoc));
+
   ProcessDeclAttributeList(TUScope, ObjCMethod, AttrList);
   AddPragmaAttributes(TUScope, ObjCMethod);
 

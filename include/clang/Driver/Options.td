@@ -1970,6 +1970,12 @@ def mhwdiv_EQ : Joined<["-"], "mhwdiv=">, Group<m_Group>;
 def mglobal_merge : Flag<["-"], "mglobal-merge">, Group<m_Group>, Flags<[CC1Option]>,
   HelpText<"Enable merging of globals">;
 def mhard_float : Flag<["-"], "mhard-float">, Group<m_Group>;
+def minterop64_32_thunk_prefix_EQ : Joined<["-"], "minterop64-32-thunk-prefix=">,
+  Group<m_Group>, Flags<[CC1Option]>, HelpText<"Set auto-generated thunk prefix">;
+def minterop64_32_cs32_name_EQ : Joined<["-"], "minterop64-32-cs32-name=">,
+  Group<m_Group>, Flags<[CC1Option]>, HelpText<"Set auto-generated 32-bit CS var name">;
+def minterop64_32_cs64_name_EQ : Joined<["-"], "minterop64-32-cs64-name=">,
+  Group<m_Group>, Flags<[CC1Option]>, HelpText<"Set auto-generated 64-bit CS var name">;
 def miphoneos_version_min_EQ : Joined<["-"], "miphoneos-version-min=">, Group<m_Group>;
 def mios_version_min_EQ : Joined<["-"], "mios-version-min=">,
   Alias<miphoneos_version_min_EQ>, HelpText<"Set iOS deployment target">;

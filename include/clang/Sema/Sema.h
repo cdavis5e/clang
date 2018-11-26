@@ -491,6 +491,18 @@ public:
   StringLiteral *CurInitSeg;
   SourceLocation CurInitSegLoc;
 
+  /// Current prefix for auto-generated 64/32 interop thunks.
+  StringLiteral *CurPtr32ThunkPrefix;
+  SourceLocation CurPtr32ThunkPrefixLoc;
+
+  /// Current name of the 32-bit code segment selector variable.
+  StringLiteral *CurPtr32CS32Name;
+  SourceLocation CurPtr32CS32NameLoc;
+
+  /// Current name of the 64-bit code segment selector variable.
+  StringLiteral *CurPtr32CS64Name;
+  SourceLocation CurPtr32CS64NameLoc;
+
   /// VisContext - Manages the stack for \#pragma GCC visibility.
   void *VisContext; // Really a "PragmaVisStack*"
 
@@ -8546,6 +8558,15 @@ public:
   /// Called on well-formed \#pragma clang default_addr_space(...).
   void ActOnPragmaDefaultAS(SourceLocation Loc, PragmaMsStackAction Action,
                             LangAS AS);
+
+  /// Called on well-formed \#pragma clang ptr32_thunk_prefix(...).
+  void ActOnPragmaPtr32ThunkPrefix(SourceLocation Loc, StringLiteral *Prefix);
+
+  /// Called on well-formed \#pragma clang ptr32_cs32_name(...).
+  void ActOnPragmaPtr32CS32Name(SourceLocation Loc, StringLiteral *Name);
+
+  /// Called on well-formed \#pragma clang ptr32_cs64_name(...).
+  void ActOnPragmaPtr32CS64Name(SourceLocation Loc, StringLiteral *Name);
 
   //===--------------------------------------------------------------------===//
   // C++ Coroutines TS

@@ -793,6 +793,24 @@ void Sema::ActOnPragmaDefaultAS(SourceLocation Loc, PragmaMsStackAction Action,
   Context.DefaultAddrSpace = AddrSpaceStack.CurrentValue;
 }
 
+void Sema::ActOnPragmaPtr32ThunkPrefix(SourceLocation PragmaLocation,
+                                       StringLiteral *Prefix) {
+  CurPtr32ThunkPrefix = Prefix;
+  CurPtr32ThunkPrefixLoc = PragmaLocation;
+}
+
+void Sema::ActOnPragmaPtr32CS32Name(SourceLocation PragmaLocation,
+                                    StringLiteral *Name) {
+  CurPtr32CS32Name = Name;
+  CurPtr32CS32NameLoc = PragmaLocation;
+}
+
+void Sema::ActOnPragmaPtr32CS64Name(SourceLocation PragmaLocation,
+                                    StringLiteral *Name) {
+  CurPtr32CS64Name = Name;
+  CurPtr32CS64NameLoc = PragmaLocation;
+}
+
 
 void Sema::PushNamespaceVisibilityAttr(const VisibilityAttr *Attr,
                                        SourceLocation Loc) {

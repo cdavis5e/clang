@@ -3032,6 +3032,10 @@ static void ParseTargetArgs(TargetOptions &Opts, ArgList &Args,
     else
       Opts.SystemAddrSpace = AS;
   }
+  Opts.Ptr32ThunkPrefix =
+      Args.getLastArgValue(OPT_minterop64_32_thunk_prefix_EQ);
+  Opts.Ptr32CS32Name = Args.getLastArgValue(OPT_minterop64_32_cs32_name_EQ);
+  Opts.Ptr32CS64Name = Args.getLastArgValue(OPT_minterop64_32_cs64_name_EQ);
 }
 
 bool CompilerInvocation::CreateFromArgs(CompilerInvocation &Res,

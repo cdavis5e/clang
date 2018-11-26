@@ -1327,6 +1327,13 @@ void CodeGenModule::SetLLVMFunctionAttributesForDefinition(const Decl *D,
       B.addAttribute(llvm::Attribute::MinSize);
   }
 
+  if (auto *A = D->getAttr<Ptr32ThunkPrefixAttr>())
+    B.addAttribute("thunk-prefix", A->getPrefix());
+  if (auto *A = D->getAttr<Ptr32CS32NameAttr>())
+    B.addAttribute("thunk-cs32-name", A->getName());
+  if (auto *A = D->getAttr<Ptr32CS64NameAttr>())
+    B.addAttribute("thunk-cs64-name", A->getName());
+
   F->addAttributes(llvm::AttributeList::FunctionIndex, B);
 
   unsigned alignment = D->getMaxAlignment() / Context.getCharWidth();

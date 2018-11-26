@@ -169,7 +169,8 @@ Sema::Sema(Preprocessor &pp, ASTContext &ctxt, ASTConsumer &consumer,
       DataSegStack(nullptr), BSSSegStack(nullptr), ConstSegStack(nullptr),
       CodeSegStack(nullptr),
       AddrSpaceStack(Context.getTargetInfo().getTargetOpts().DefaultAddrSpace),
-      CurInitSeg(nullptr), VisContext(nullptr),
+      CurInitSeg(nullptr), CurPtr32ThunkPrefix(nullptr),
+      CurPtr32CS32Name(nullptr), CurPtr32CS64Name(nullptr), VisContext(nullptr),
       PragmaAttributeCurrentTargetDecl(nullptr),
       IsBuildingRecoveryCallExpr(false), Cleanup{}, LateTemplateParser(nullptr),
       LateTemplateParserCleanup(nullptr), OpaqueParser(nullptr), IdResolver(pp),
@@ -219,6 +220,32 @@ Sema::Sema(Preprocessor &pp, ASTContext &ctxt, ASTConsumer &consumer,
   PP.addPPCallbacks(std::move(Callbacks));
   SemaPPCallbackHandler->set(*this);
   Context.DefaultAddrSpace = AddrSpaceStack.CurrentValue;
+
+  const TargetOptions &TargetOpts = Context.getTargetInfo().getTargetOpts();
+  if (!TargetOpts.Ptr32ThunkPrefix.empty())
+    CurPtr32ThunkPrefix = StringLiteral::Create(
+        Context, TargetOpts.Ptr32ThunkPrefix, StringLiteral::Ascii,
+        /*Pascal=*/false,
+        Context.getConstantArrayType(
+            Context.CharTy, llvm::APInt(32, TargetOpts.Ptr32ThunkPrefix.size()),
+            ArrayType::Normal, 0),
+        SourceLocation());
+  if (!TargetOpts.Ptr32CS32Name.empty())
+    CurPtr32CS32Name = StringLiteral::Create(
+        Context, TargetOpts.Ptr32CS32Name, StringLiteral::Ascii,
+        /*Pascal=*/false,
+        Context.getConstantArrayType(
+            Context.CharTy, llvm::APInt(32, TargetOpts.Ptr32CS32Name.size()),
+            ArrayType::Normal, 0),
+        SourceLocation());
+  if (!TargetOpts.Ptr32CS64Name.empty())
+    CurPtr32CS64Name = StringLiteral::Create(
+        Context, TargetOpts.Ptr32CS64Name, StringLiteral::Ascii,
+        /*Pascal=*/false,
+        Context.getConstantArrayType(
+            Context.CharTy, llvm::APInt(32, TargetOpts.Ptr32CS64Name.size()),
+            ArrayType::Normal, 0),
+        SourceLocation());
 }
 
 void Sema::addImplicitTypedef(StringRef Name, QualType T) {
