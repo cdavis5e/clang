@@ -2492,8 +2492,9 @@ void CodeGenModule::emitMultiVersionFunctions() {
               const CGFunctionInfo &FI =
                   getTypes().arrangeGlobalDeclaration(GD);
               llvm::FunctionType *Ty = getTypes().GetFunctionType(FI);
-              Func = GetAddrOfFunction(CurGD, Ty, /*ForVTable=*/false,
-                                       /*DontDefer=*/false, ForDefinition);
+              Func = GetAddrOfFunction(CurGD, Ty, /*ForCall=*/false,
+                                       /*ForVTable=*/false, /*DontDefer=*/false,
+                                       ForDefinition);
             }
             assert(Func && "This should have just been created");
           }
@@ -2798,12 +2799,13 @@ llvm::Constant *CodeGenModule::GetOrCreateLLVMFunction(
 /// create it (this occurs when we see a definition of the function).
 llvm::Constant *CodeGenModule::GetAddrOfFunction(GlobalDecl GD,
                                                  llvm::Type *Ty,
+                                                 bool ForCall,
                                                  bool ForVTable,
                                                  bool DontDefer,
                                               ForDefinition_t IsForDefinition) {
+  const auto *FD = cast<FunctionDecl>(GD.getDecl());
   // If there was no specific requested type, just convert it now.
   if (!Ty) {
-    const auto *FD = cast<FunctionDecl>(GD.getDecl());
     auto CanonTy = Context.getCanonicalType(FD->getType());
     Ty = getTypes().ConvertFunctionType(CanonTy, FD);
   }
@@ -2818,7 +2820,21 @@ llvm::Constant *CodeGenModule::GetAddrOfFunction(GlobalDecl GD,
       GD = GlobalDecl(DD, Dtor_Base);
   }
 
-  StringRef MangledName = getMangledName(GD);
+  std::string MangledName = getMangledName(GD);
+  // If we're getting the address of a function with a 32-bit calling
+  // convention, return the address of the thunk instead.
+  // FIXME: We should only do this if we're downcasting the function pointer to
+  // a 32-bit pointer.
+  if (LangOpts.Interop6432 && !IsForDefinition && !ForCall) {
+    if (is32BitInteropCC(
+            FD->getType()->castAs<FunctionType>()->getCallConv())) {
+      if (auto *A = FD->getAttr<Ptr32ThunkPrefixAttr>())
+        MangledName = (A->getPrefix() + "thunk32_" + MangledName).str();
+      else
+        MangledName = (Twine("__i386_on_x86_64_thunk32_") + MangledName).str();
+    }
+  }
+
   return GetOrCreateLLVMFunction(MangledName, Ty, GD, ForVTable, DontDefer,
                                  /*IsThunk=*/false, llvm::AttributeList(),
                                  IsForDefinition);
@@ -3131,13 +3147,13 @@ CodeGenModule::GetAddrOfGlobal(GlobalDecl GD,
     auto FInfo = &getTypes().arrangeCXXMethodDeclaration(
         cast<CXXMethodDecl>(D));
     auto Ty = getTypes().GetFunctionType(*FInfo);
-    return GetAddrOfFunction(GD, Ty, /*ForVTable=*/false, /*DontDefer=*/false,
-                             IsForDefinition);
+    return GetAddrOfFunction(GD, Ty, /*ForCall=*/false, /*ForVTable=*/false,
+                             /*DontDefer=*/false, IsForDefinition);
   } else if (isa<FunctionDecl>(D)) {
     const CGFunctionInfo &FI = getTypes().arrangeGlobalDeclaration(GD);
     llvm::FunctionType *Ty = getTypes().GetFunctionType(FI);
-    return GetAddrOfFunction(GD, Ty, /*ForVTable=*/false, /*DontDefer=*/false,
-                             IsForDefinition);
+    return GetAddrOfFunction(GD, Ty, /*ForCall=*/false, /*ForVTable=*/false,
+                             /*DontDefer=*/false, IsForDefinition);
   } else
     return GetAddrOfGlobalVar(cast<VarDecl>(D), /*Ty=*/nullptr,
                               IsForDefinition);
@@ -3880,7 +3896,8 @@ void CodeGenModule::EmitGlobalFunctionDefinition(GlobalDecl GD,
 
   // Get or create the prototype for the function.
   if (!GV || (GV->getType()->getElementType() != Ty))
-    GV = cast<llvm::GlobalValue>(GetAddrOfFunction(GD, Ty, /*ForVTable=*/false,
+    GV = cast<llvm::GlobalValue>(GetAddrOfFunction(GD, Ty, /*ForCall=*/false,
+                                                   /*ForVTable=*/false,
                                                    /*DontDefer=*/true,
                                                    ForDefinition));
 

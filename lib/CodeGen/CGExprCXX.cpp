@@ -177,7 +177,8 @@ RValue CodeGenFunction::EmitCXXMemberCallExpr(const CXXMemberCallExpr *CE,
 
   if (MD->isStatic()) {
     // The method is static, emit it as we would a regular call.
-    CGCallee callee = CGCallee::forDirect(CGM.GetAddrOfFunction(MD), MD);
+    CGCallee callee = CGCallee::forDirect(
+        CGM.GetAddrOfFunction(MD, nullptr, /*ForCall=*/true), MD);
     return EmitCall(getContext().getPointerType(MD->getType()), callee, CE,
                     ReturnValue);
   }
@@ -358,7 +359,8 @@ RValue CodeGenFunction::EmitCXXMemberOrOperatorMemberCallExpr(
         const CXXDestructorDecl *DDtor =
           cast<CXXDestructorDecl>(DevirtualizedMethod);
         Callee = CGCallee::forDirect(
-                  CGM.GetAddrOfFunction(GlobalDecl(DDtor, Dtor_Complete), Ty),
+                  CGM.GetAddrOfFunction(GlobalDecl(DDtor, Dtor_Complete), Ty,
+                                        /*ForCall=*/true),
                                      DDtor);
       }
       EmitCXXMemberOrOperatorCall(
@@ -371,7 +373,8 @@ RValue CodeGenFunction::EmitCXXMemberOrOperatorMemberCallExpr(
   CGCallee Callee;
   if (const CXXConstructorDecl *Ctor = dyn_cast<CXXConstructorDecl>(MD)) {
     Callee = CGCallee::forDirect(
-                  CGM.GetAddrOfFunction(GlobalDecl(Ctor, Ctor_Complete), Ty),
+                  CGM.GetAddrOfFunction(GlobalDecl(Ctor, Ctor_Complete), Ty,
+                                        /*ForCall=*/true),
                                  Ctor);
   } else if (UseVirtualCall) {
     Callee = CGCallee::forVirtual(CE, MD, This.getAddress(), Ty);
@@ -389,11 +392,12 @@ RValue CodeGenFunction::EmitCXXMemberOrOperatorMemberCallExpr(
     if (getLangOpts().AppleKext && MD->isVirtual() && HasQualifier)
       Callee = BuildAppleKextVirtualCall(MD, Qualifier, Ty);
     else if (!DevirtualizedMethod)
-      Callee = CGCallee::forDirect(CGM.GetAddrOfFunction(MD, Ty), MD);
+      Callee = CGCallee::forDirect(
+          CGM.GetAddrOfFunction(MD, Ty, /*ForCall=*/true), MD);
     else {
       Callee = CGCallee::forDirect(
-                                CGM.GetAddrOfFunction(DevirtualizedMethod, Ty),
-                                   DevirtualizedMethod);
+          CGM.GetAddrOfFunction(DevirtualizedMethod, Ty, /*ForCall=*/true),
+          DevirtualizedMethod);
     }
   }
 
@@ -1292,7 +1296,8 @@ static RValue EmitNewDeleteCall(CodeGenFunction &CGF,
                                 const FunctionProtoType *CalleeType,
                                 const CallArgList &Args) {
   llvm::Instruction *CallOrInvoke;
-  llvm::Constant *CalleePtr = CGF.CGM.GetAddrOfFunction(CalleeDecl);
+  llvm::Constant *CalleePtr =
+      CGF.CGM.GetAddrOfFunction(CalleeDecl, nullptr, /*ForCall=*/true);
   CGCallee Callee = CGCallee::forDirect(CalleePtr, CalleeDecl);
   RValue RV =
       CGF.EmitCall(CGF.CGM.getTypes().arrangeFreeFunctionCall(

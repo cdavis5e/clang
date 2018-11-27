@@ -2791,7 +2791,8 @@ void CodeGenFunction::EmitForwardingCallToLambda(
     CGM.getTypes().arrangeCXXMethodDeclaration(callOperator);
   llvm::Constant *calleePtr =
     CGM.GetAddrOfFunction(GlobalDecl(callOperator),
-                          CGM.getTypes().GetFunctionType(calleeFnInfo));
+                          CGM.getTypes().GetFunctionType(calleeFnInfo),
+                          /*ForCall=*/true);
 
   // Prepare the return slot.
   const FunctionProtoType *FPT =

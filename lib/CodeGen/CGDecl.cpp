@@ -1624,7 +1624,7 @@ void CodeGenFunction::EmitAutoVarCleanups(const AutoVarEmission &emission) {
   if (const CleanupAttr *CA = D.getAttr<CleanupAttr>()) {
     const FunctionDecl *FD = CA->getFunctionDecl();
 
-    llvm::Constant *F = CGM.GetAddrOfFunction(FD);
+    llvm::Constant *F = CGM.GetAddrOfFunction(FD, nullptr, /*ForCall=*/true);
     assert(F && "Could not find function!");
 
     const CGFunctionInfo &Info = CGM.getTypes().arrangeFunctionDeclaration(FD);

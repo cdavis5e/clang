@@ -804,6 +804,7 @@ public:
   /// Return the address of the given function. If Ty is non-null, then this
   /// function will use the specified type if it has to create it.
   llvm::Constant *GetAddrOfFunction(GlobalDecl GD, llvm::Type *Ty = nullptr,
+                                    bool ForCall = false,
                                     bool ForVTable = false,
                                     bool DontDefer = false,
                                     ForDefinition_t IsForDefinition
