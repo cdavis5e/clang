@@ -1952,7 +1952,8 @@ static void handleCommonAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
 }
 
 static void handleNakedAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
-  if (checkAttrMutualExclusion<DisableTailCallsAttr>(S, D, AL))
+  if (checkAttrMutualExclusion<DisableTailCallsAttr>(S, D, AL) ||
+      checkAttrMutualExclusion<MSHookPrologueAttr>(S, D, AL))
     return;
 
   if (AL.isDeclspecAttribute()) {
@@ -4104,7 +4105,8 @@ OptimizeNoneAttr *Sema::mergeOptimizeNoneAttr(Decl *D, SourceRange Range,
 }
 
 static void handleAlwaysInlineAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
-  if (checkAttrMutualExclusion<NotTailCalledAttr>(S, D, AL))
+  if (checkAttrMutualExclusion<NotTailCalledAttr>(S, D, AL) ||
+      checkAttrMutualExclusion<MSHookPrologueAttr>(S, D, AL))
     return;
 
   if (AlwaysInlineAttr *Inline = S.mergeAlwaysInlineAttr(
@@ -6557,6 +6559,9 @@ static void ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D,
     break;
   case ParsedAttr::AT_LayoutVersion:
     handleLayoutVersion(S, D, AL);
+  case ParsedAttr::AT_MSHookPrologue:
+    handleSimpleAttributeWithExclusions<MSHookPrologueAttr, NakedAttr,
+      AlwaysInlineAttr>(S, D, AL);
     break;
   case ParsedAttr::AT_TrivialABI:
     handleSimpleAttribute<TrivialABIAttr>(S, D, AL);
