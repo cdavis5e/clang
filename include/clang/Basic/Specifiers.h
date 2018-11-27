@@ -257,6 +257,13 @@ namespace clang {
     CC_X86ThisCall32, // __attribute__((thiscall32))
   };
 
+  /// Checks whether the given calling convention supports interoperation
+  /// between 64-bit and 32-bit code.
+  inline bool is32BitInteropCC(CallingConv CC) {
+    return CC == CC_X86C32 || CC == CC_X86StdCall32 ||
+           CC == CC_X86FastCall32 || CC == CC_X86ThisCall32;
+  }
+
   /// Checks whether the given calling convention supports variadic
   /// calls. Unprototyped calls also use the variadic call rules.
   inline bool supportsVariadicCall(CallingConv CC) {

@@ -7512,6 +7512,17 @@ checkPointerTypesForAssignment(Sema &S, QualType LHSType, QualType RHSType) {
   if (!S.getLangOpts().CPlusPlus &&
       S.IsFunctionConversion(ltrans, rtrans, ltrans))
     return Sema::IncompatiblePointer;
+  if (S.getLangOpts().Interop6432) {
+    // Special case: If the types in question are function types, the target
+    // address space is ptr32, and the particular types in question have
+    // 32-bit calling conventions, then this is allowed.
+    if (ConvTy == Sema::IncompatiblePointerDiscardsQualifiers &&
+        lhptee->isFunctionType() && rhptee->isFunctionType() &&
+        lhq.getAddressSpace() == LangAS::ptr32 &&
+        rhq.getAddressSpace() == LangAS::Default &&
+        is32BitInteropCC(lhptee->castAs<FunctionType>()->getCallConv()))
+      return Sema::Compatible;
+  }
   return ConvTy;
 }
 

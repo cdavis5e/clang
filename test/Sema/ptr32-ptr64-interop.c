@@ -11,6 +11,10 @@ _Static_assert(_Alignof(void * __ptr64) == 8, "__ptr64 should be aligned to 8 by
 extern void bar(int * __ptr32);
 extern void baz(int *);
 
+typedef void (__attribute__((stdcall32))* __ptr32 fp32)(int * __ptr32);
+fp32 pquux;
+extern void __attribute__((stdcall32)) quux(int * __ptr32);
+
 void foo() {
   void *p = p64;  // no-warning
   // It should be possible to convert 32->64...
@@ -24,4 +28,10 @@ void foo() {
   int x;
   bar(&x);  // no-warning
   baz(&x);  // no-warning
+  // It is possible to downcast 64-bit function pointers with a 32-bit
+  // convention to a 32-bit pointer.
+  if (pquux != quux)  // no-warning
+    pquux = quux;  // no-warning
+  fp32 blah = quux;  // no-warning
+  fp32 blah2 = (fp32)quux;  // no-warning
 }
