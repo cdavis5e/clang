@@ -1376,6 +1376,7 @@ namespace {
 /// CGFunctionInfo should be passed to actual LLVM IR function.
 class ClangToLLVMArgMapping {
   static const unsigned InvalidIndex = ~0U;
+  unsigned ThunkDataArgNo;
   unsigned InallocaArgNo;
   unsigned SRetArgNo;
   unsigned TotalIRArgs;
@@ -1398,9 +1399,16 @@ class ClangToLLVMArgMapping {
 public:
   ClangToLLVMArgMapping(const ASTContext &Context, const CGFunctionInfo &FI,
                         bool OnlyRequiredArgs = false)
-      : InallocaArgNo(InvalidIndex), SRetArgNo(InvalidIndex), TotalIRArgs(0),
+      : ThunkDataArgNo(InvalidIndex), InallocaArgNo(InvalidIndex),
+        SRetArgNo(InvalidIndex), TotalIRArgs(0),
         ArgInfo(OnlyRequiredArgs ? FI.getNumRequiredArgs() : FI.arg_size()) {
     construct(Context, FI, OnlyRequiredArgs);
+  }
+
+  bool hasThunkDataArg() const { return ThunkDataArgNo != InvalidIndex; }
+  unsigned getThunkDataArgNo() const {
+    assert(hasThunkDataArg());
+    return ThunkDataArgNo;
   }
 
   bool hasInallocaArg() const { return InallocaArgNo != InvalidIndex; }
@@ -1439,6 +1447,14 @@ private:
                  bool OnlyRequiredArgs);
 };
 
+static bool is32BitInteropCC(const CGFunctionInfo &FI, bool IsWine32Target) {
+  return FI.getCallingConvention() == llvm::CallingConv::X86_64_C32 ||
+    (IsWine32Target &&
+     (FI.getCallingConvention() == llvm::CallingConv::X86_StdCall ||
+      FI.getCallingConvention() == llvm::CallingConv::X86_FastCall ||
+      FI.getCallingConvention() == llvm::CallingConv::X86_ThisCall));
+}
+
 void ClangToLLVMArgMapping::construct(const ASTContext &Context,
                                       const CGFunctionInfo &FI,
                                       bool OnlyRequiredArgs) {
@@ -1449,6 +1465,12 @@ void ClangToLLVMArgMapping::construct(const ASTContext &Context,
   if (RetAI.getKind() == ABIArgInfo::Indirect) {
     SwapThisWithSRet = RetAI.isSRetAfterThis();
     SRetArgNo = SwapThisWithSRet ? 1 : IRArgNo++;
+  }
+
+  if (is32BitInteropCC(
+        FI, Context.getTargetInfo().getTriple().getEnvironment() ==
+        llvm::Triple::Wine32)) {
+    ThunkDataArgNo = IRArgNo++;
   }
 
   unsigned ArgNo = 0;
@@ -1613,6 +1635,15 @@ CodeGenTypes::GetFunctionType(const CGFunctionInfo &FI) {
     auto ArgStruct = FI.getArgStruct();
     assert(ArgStruct);
     ArgTypes[IRFunctionArgs.getInallocaArgNo()] = ArgStruct->getPointerTo();
+  }
+
+  // Add type for thunkdata argument.
+  if (IRFunctionArgs.hasThunkDataArg()) {
+    auto *ThunkDataStruct = llvm::StructType::get(
+        llvm::ArrayType::get(CGM.Int64Ty, 6));
+    assert(ThunkDataStruct);
+    ArgTypes[IRFunctionArgs.getThunkDataArgNo()] =
+        ThunkDataStruct->getPointerTo(32);
   }
 
   // Add in all of the required arguments.
@@ -2024,6 +2055,14 @@ void CodeGenModule::ConstructAttributeList(
         llvm::AttributeSet::get(getLLVMContext(), Attrs);
   }
 
+  // Attach attributes to thunkdata argument.
+  if (IRFunctionArgs.hasThunkDataArg()) {
+    llvm::AttrBuilder Attrs;
+    Attrs.addAttribute(llvm::Attribute::ThunkData);
+    ArgAttrs[IRFunctionArgs.getThunkDataArgNo()] =
+        llvm::AttributeSet::get(getLLVMContext(), Attrs);
+  }
+
   unsigned ArgNo = 0;
   for (CGFunctionInfo::const_arg_iterator I = FI.arg_begin(),
                                           E = FI.arg_end();
@@ -2273,6 +2312,13 @@ void CodeGenFunction::EmitFunctionProlog(const CGFunctionInfo &FI,
   if (IRFunctionArgs.hasSRetArg()) {
     auto AI = cast<llvm::Argument>(FnArgs[IRFunctionArgs.getSRetArgNo()]);
     AI->setName("agg.result");
+    AI->addAttr(llvm::Attribute::NoAlias);
+  }
+
+  // Name the thunk data parameter.
+  if (IRFunctionArgs.hasThunkDataArg()) {
+    auto AI = cast<llvm::Argument>(FnArgs[IRFunctionArgs.getThunkDataArgNo()]);
+    AI->setName("thunk.data");
     AI->addAttr(llvm::Attribute::NoAlias);
   }
 
@@ -3849,6 +3895,15 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
 
   ClangToLLVMArgMapping IRFunctionArgs(CGM.getContext(), CallInfo);
   SmallVector<llvm::Value *, 16> IRCallArgs(IRFunctionArgs.totalIRArgs());
+
+  // If we need thunk data, add that now.
+  if (IRFunctionArgs.hasThunkDataArg()) {
+    if (!ThunkData.isValid())
+      ThunkData = CreateTempAllocaWithoutCast(
+          llvm::StructType::get(llvm::ArrayType::get(Int64Ty, 6)),
+          CharUnits::fromQuantity(8), "thunk.storage");
+    IRCallArgs[IRFunctionArgs.getThunkDataArgNo()] = ThunkData.getPointer();
+  }
 
   // If the call returns a temporary with struct return, create a temporary
   // alloca to hold the result, unless one is given to us.
