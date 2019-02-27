@@ -470,6 +470,7 @@ public:
 
   // Address space #pragmas.
   PragmaStack<LangAS> AddrSpaceStack;
+  PragmaStack<LangAS> StgAddrSpaceStack;
 
   // RAII object to push / pop sentinel slots for all MS #pragma stacks.
   // Actions should be performed only if we enter / exit a C++ method body.
@@ -8557,6 +8558,10 @@ public:
 
   /// Called on well-formed \#pragma clang default_addr_space(...).
   void ActOnPragmaDefaultAS(SourceLocation Loc, PragmaMsStackAction Action,
+                            LangAS AS);
+
+  /// Called on well-formed \#pragma clang storage_addr_space(...).
+  void ActOnPragmaStorageAS(SourceLocation Loc, PragmaMsStackAction Action,
                             LangAS AS);
 
   /// Called on well-formed \#pragma clang ptr32_thunk_prefix(...).

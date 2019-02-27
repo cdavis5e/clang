@@ -260,9 +260,13 @@ struct PragmaAttributeHandler : public PragmaHandler {
 
 /// "\#pragma clang default_addr_space(...)"
 struct PragmaDefaultASHandler : public PragmaHandler {
-  PragmaDefaultASHandler() : PragmaHandler("default_addr_space") {}
+  PragmaDefaultASHandler(bool Storage)
+      : PragmaHandler(Storage ? "storage_addr_space" : "default_addr_space"),
+        ForStorage(Storage) {}
   void HandlePragma(Preprocessor &PP, PragmaIntroducerKind Introducer,
                     Token &FirstToken) override;
+
+  bool ForStorage;
 };
 
 }  // end namespace
@@ -383,8 +387,11 @@ void Parser::initializePragmaHandlers() {
   AttributePragmaHandler.reset(new PragmaAttributeHandler(AttrFactory));
   PP.AddPragmaHandler("clang", AttributePragmaHandler.get());
 
-  DefaultASHandler.reset(new PragmaDefaultASHandler());
+  DefaultASHandler.reset(new PragmaDefaultASHandler(false));
   PP.AddPragmaHandler("clang", DefaultASHandler.get());
+
+  StorageASHandler.reset(new PragmaDefaultASHandler(true));
+  PP.AddPragmaHandler("clang", StorageASHandler.get());
 
   if (getLangOpts().Interop6432) {
     Ptr32ThunkPrefixHandler.reset(new PragmaMSPragma("ptr32_thunk_prefix"));
@@ -502,6 +509,9 @@ void Parser::resetPragmaHandlers() {
 
   PP.RemovePragmaHandler("clang", DefaultASHandler.get());
   DefaultASHandler.reset();
+
+  PP.RemovePragmaHandler("clang", StorageASHandler.get());
+  StorageASHandler.reset();
 
   if (getLangOpts().Interop6432) {
     PP.RemovePragmaHandler("clang", Ptr32ThunkPrefixHandler.get());
@@ -1588,6 +1598,16 @@ void Parser::HandlePragmaDefaultAS() {
   auto AS = static_cast<LangAS>(Value & 0xFFFFFF);
   SourceLocation PragmaLoc = ConsumeAnnotationToken();
   Actions.ActOnPragmaDefaultAS(PragmaLoc, Action, AS);
+}
+
+void Parser::HandlePragmaStorageAS() {
+  assert(Tok.is(tok::annot_pragma_storage_as) &&
+         "Expected #pragma clang storage_addr_space token");
+  uintptr_t Value = reinterpret_cast<uintptr_t>(Tok.getAnnotationValue());
+  auto Action = static_cast<Sema::PragmaMsStackAction>((Value >> 24) & 0xFF);
+  auto AS = static_cast<LangAS>(Value & 0xFFFFFF);
+  SourceLocation PragmaLoc = ConsumeAnnotationToken();
+  Actions.ActOnPragmaStorageAS(PragmaLoc, Action, AS);
 }
 
 bool Parser::HandlePragmaPtr32ThunkPrefix(StringRef PragmaName,
@@ -3349,7 +3369,7 @@ void PragmaDefaultASHandler::HandlePragma(Preprocessor &PP,
 
   if (Tok.isNot(tok::l_paren)) {
     PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_lparen)
-        << "clang default_addr_space";
+        << ("clang " + getName()).str();
     return;
   }
   PP.Lex(Tok);
@@ -3362,7 +3382,7 @@ void PragmaDefaultASHandler::HandlePragma(Preprocessor &PP,
       PP.Lex(Tok);
       if (Tok.isNot(tok::comma)) {
         PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_punc)
-            << "clang default_addr_space";
+            << ("clang " + getName()).str();
         return;
       }
       PP.Lex(Tok);
@@ -3394,7 +3414,7 @@ void PragmaDefaultASHandler::HandlePragma(Preprocessor &PP,
         AS = LangAS::Default;
       if (AS == LangAS::Default) {
         PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_addr_space)
-            << SourceRange(Tok.getLocation(), Tok.getEndLoc());
+            << SourceRange(Tok.getLocation(), Tok.getEndLoc()) << getName();
         return;
       }
       PP.Lex(Tok);
@@ -3405,21 +3425,21 @@ void PragmaDefaultASHandler::HandlePragma(Preprocessor &PP,
           static_cast<int>(LangAS::FirstTargetAddressSpace);
       if (Value > MaxAS) {
         PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_integer)
-            << 0 << MaxAS << "clang default_addr_space";
+            << 0 << MaxAS << ("clang " + getName()).str();
         return;
       }
       AS = getLangASFromTargetAS(static_cast<uint32_t>(Value));
     } else {
       PP.Diag(Tok.getLocation(),
               diag::warn_pragma_expected_identifier_or_integer)
-          << "clang default_addr_space";
+          << ("clang " + getName()).str();
       return;
     }
   }
 
   if (Tok.isNot(tok::r_paren)) {
     PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_rparen)
-        << "clang default_addr_space";
+        << ("clang " + getName()).str();
     return;
   }
   SourceLocation EndLoc = Tok.getLocation();
@@ -3427,14 +3447,15 @@ void PragmaDefaultASHandler::HandlePragma(Preprocessor &PP,
 
   if (Tok.isNot(tok::eod)) {
     PP.Diag(Tok.getLocation(), diag::warn_pragma_extra_tokens_at_eol)
-        << "clang default_addr_space";
+        << ("clang " + getName()).str();
     return;
   }
 
   // Generate the annotated pragma token.
   Token AnnotTok;
   AnnotTok.startToken();
-  AnnotTok.setKind(tok::annot_pragma_default_as);
+  AnnotTok.setKind(ForStorage ? tok::annot_pragma_storage_as
+                              : tok::annot_pragma_default_as);
   AnnotTok.setLocation(PragmaLoc);
   AnnotTok.setAnnotationEndLoc(EndLoc);
   AnnotTok.setAnnotationValue(

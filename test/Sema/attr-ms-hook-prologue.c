@@ -5,12 +5,12 @@ int __attribute__((ms_hook_prologue)) foo(int a, int b) {
 }
 
 // expected-note@+2{{conflicting attribute is here}}
-// expected-error@+1{{'naked' and 'ms_hook_prologue' attributes are not compatible}}
+// expected-error@+1{{'ms_hook_prologue' and 'naked' attributes are not compatible}}
 __declspec(naked) int __attribute__((ms_hook_prologue)) bar(int a, int b) {
 }
 
 // expected-note@+2{{conflicting attribute is here}}
-// expected-error@+1{{'__forceinline' and 'ms_hook_prologue' attributes are not compatible}}
+// expected-error@+1{{'ms_hook_prologue' and '__forceinline' attributes are not compatible}}
 __forceinline int __attribute__((ms_hook_prologue)) baz(int a, int b) {
   return a-b;
 }

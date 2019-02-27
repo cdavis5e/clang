@@ -1073,7 +1073,7 @@ def err_pragma_attribute_duplicate_subject : Error<
   "duplicate attribute subject matcher '%0'">;
 // #pragma clang default_addr_space(...)
 def warn_pragma_expected_addr_space : Warning<
-  "expected address space name in '#pragma clang default_addr_space' - ignoring">,
+  "expected address space name in '#pragma clang %0' - ignoring">,
   InGroup<IgnoredPragmas>;
 
 def err_opencl_unroll_hint_on_non_loop : Error<

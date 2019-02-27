@@ -576,6 +576,10 @@ public:
   /// explicitly given.
   LangAS DefaultAddrSpace = LangAS::Default;
 
+  /// The default address space for global variables that don't have one
+  /// explicitly given.
+  LangAS StorageAddrSpace = LangAS::Default;
+
   /// Contains parents of a node.
   using ParentVector = llvm::SmallVector<ast_type_traits::DynTypedNode, 2>;
 

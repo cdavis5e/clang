@@ -1916,7 +1916,7 @@ VarDecl *VarDecl::Create(ASTContext &C, DeclContext *DC,
     switch (S) {
     case SC_None:
       if (DC->getRedeclContext()->isFileContext())
-        AS = C.DefaultAddrSpace;
+        AS = C.StorageAddrSpace;
       else
         AS = C.getTargetInfo().getStackAddressSpace(C.getLangOpts());
       break;
@@ -1930,7 +1930,7 @@ VarDecl *VarDecl::Create(ASTContext &C, DeclContext *DC,
       AS = C.getTargetInfo().getStackAddressSpace(C.getLangOpts());
       break;
     default:
-      AS = C.DefaultAddrSpace;
+      AS = C.StorageAddrSpace;
     }
     if (AS != LangAS::Default)
       T = C.getAddrSpaceQualType(T, AS);

@@ -396,6 +396,10 @@ Retry:
   case tok::annot_pragma_default_as:
     HandlePragmaDefaultAS();
     return StmtEmpty();
+
+  case tok::annot_pragma_storage_as:
+    HandlePragmaStorageAS();
+    return StmtEmpty();
   }
 
   // If we reached this code, the statement must end in a semicolon.

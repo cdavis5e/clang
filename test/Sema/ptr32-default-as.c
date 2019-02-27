@@ -27,5 +27,5 @@ void foo() {
   p = p32;  // no-warning
   // ...but not 64->32.
   p32 = p64;
-  // expected-error@-1{{assigning 'void * __ptr64 ' to 'void *' changes address space of pointer}}
+  // expected-error@-1{{assigning 'void * __ptr64' to 'void *' changes address space of pointer}}
 }

@@ -3764,8 +3764,8 @@ QualType ASTContext::adjustStringLiteralBaseType(QualType Ty) const {
   // OpenCL v1.1 s6.5.3: a string literal is in the constant address space.
   return LangOpts.OpenCL
            ? getAddrSpaceQualType(Ty, LangAS::opencl_constant)
-           : (DefaultAddrSpace != LangAS::Default
-                ? getAddrSpaceQualType(Ty, DefaultAddrSpace)
+           : (StorageAddrSpace != LangAS::Default
+                ? getAddrSpaceQualType(Ty, StorageAddrSpace)
                 : Ty);
 }
 

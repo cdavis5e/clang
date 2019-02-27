@@ -193,6 +193,7 @@ class Parser : public CodeCompletionHandler {
   std::unique_ptr<PragmaHandler> STDCUnknownHandler;
   std::unique_ptr<PragmaHandler> AttributePragmaHandler;
   std::unique_ptr<PragmaHandler> DefaultASHandler;
+  std::unique_ptr<PragmaHandler> StorageASHandler;
   std::unique_ptr<PragmaHandler> Ptr32ThunkPrefixHandler;
   std::unique_ptr<PragmaHandler> Ptr32CS32NameHandler;
   std::unique_ptr<PragmaHandler> Ptr32CS64NameHandler;
@@ -705,6 +706,8 @@ private:
   void HandlePragmaAttribute();
 
   void HandlePragmaDefaultAS();
+
+  void HandlePragmaStorageAS();
 
   bool HandlePragmaPtr32ThunkPrefix(StringRef PragmaName,
                                     SourceLocation PragmaLocation);

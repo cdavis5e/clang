@@ -72,6 +72,9 @@ public:
   /// The default address space for pointers.
   LangAS DefaultAddrSpace = LangAS::Default;
 
+  /// The default address space for global data.
+  LangAS StorageAddrSpace = LangAS::Default;
+
   /// The default address space for pointers in a system header.
   LangAS SystemAddrSpace = LangAS::Default;
 

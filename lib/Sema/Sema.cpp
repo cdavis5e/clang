@@ -104,6 +104,7 @@ public:
       if (S->LangOpts.Interop6432 && SrcMgr::isSystem(FileType)) {
         // When a system context is entered, it's as though this:
         //   #pragma clang default_addr_space(push, default)
+        //   #pragma clang storage_addr_space(push, default)
         // were executed. Instead of pushing multiple times onto the stack,
         // though, we just keep track of the number of times we entered a
         // system file, and don't pop until we leave the last one.
@@ -122,6 +123,15 @@ public:
                   S->Context.getTargetInfo().getTargetOpts().SystemAddrSpace) |
               static_cast<uintptr_t>(Sema::PSK_Push_Set) << 24));
           S->getPreprocessor().EnterToken(AnnotTok);
+          AnnotTok.startToken();
+          AnnotTok.setKind(tok::annot_pragma_storage_as);
+          AnnotTok.setLocation(Loc);
+          AnnotTok.setAnnotationEndLoc(Loc);
+          AnnotTok.setAnnotationValue(reinterpret_cast<void *>(
+              static_cast<uintptr_t>(
+                  S->Context.getTargetInfo().getTargetOpts().SystemAddrSpace) |
+              static_cast<uintptr_t>(Sema::PSK_Push_Set) << 24));
+          S->getPreprocessor().EnterToken(AnnotTok);
         }
       }
       break;
@@ -132,10 +142,18 @@ public:
             IncludeStack.pop_back_val());
       if (S->LangOpts.Interop6432 && SysCount > 0) {
         // Conversely, when it is left, it is as though:
+        //   #pragma clang storage_addr_space(pop)
         //   #pragma clang default_addr_space(pop)
         // were executed.
         if (--SysCount == 0) {
           Token AnnotTok;
+          AnnotTok.startToken();
+          AnnotTok.setKind(tok::annot_pragma_storage_as);
+          AnnotTok.setLocation(Loc);
+          AnnotTok.setAnnotationEndLoc(Loc);
+          AnnotTok.setAnnotationValue(reinterpret_cast<void *>(
+              static_cast<uintptr_t>(Sema::PSK_Pop) << 24));
+          S->getPreprocessor().EnterToken(AnnotTok);
           AnnotTok.startToken();
           AnnotTok.setKind(tok::annot_pragma_default_as);
           AnnotTok.setLocation(Loc);
@@ -169,6 +187,8 @@ Sema::Sema(Preprocessor &pp, ASTContext &ctxt, ASTConsumer &consumer,
       DataSegStack(nullptr), BSSSegStack(nullptr), ConstSegStack(nullptr),
       CodeSegStack(nullptr),
       AddrSpaceStack(Context.getTargetInfo().getTargetOpts().DefaultAddrSpace),
+      StgAddrSpaceStack(
+          Context.getTargetInfo().getTargetOpts().StorageAddrSpace),
       CurInitSeg(nullptr), CurPtr32ThunkPrefix(nullptr),
       CurPtr32CS32Name(nullptr), CurPtr32CS64Name(nullptr), VisContext(nullptr),
       PragmaAttributeCurrentTargetDecl(nullptr),
@@ -220,6 +240,7 @@ Sema::Sema(Preprocessor &pp, ASTContext &ctxt, ASTConsumer &consumer,
   PP.addPPCallbacks(std::move(Callbacks));
   SemaPPCallbackHandler->set(*this);
   Context.DefaultAddrSpace = AddrSpaceStack.CurrentValue;
+  Context.StorageAddrSpace = StgAddrSpaceStack.CurrentValue;
 
   const TargetOptions &TargetOpts = Context.getTargetInfo().getTargetOpts();
   if (!TargetOpts.Ptr32ThunkPrefix.empty())

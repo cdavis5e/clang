@@ -592,6 +592,10 @@ bool Parser::ParseTopLevelDecl(DeclGroupPtrTy &Result) {
     HandlePragmaDefaultAS();
     return false;
 
+  case tok::annot_pragma_storage_as:
+    HandlePragmaStorageAS();
+    return false;
+
   case tok::eof:
     // Late template parsing can begin.
     if (getLangOpts().DelayedTemplateParsing)

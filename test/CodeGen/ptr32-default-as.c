@@ -1,6 +1,7 @@
 // RUN: %clang_cc1 -triple x86_64-apple-macosx10.13.0-wine32 -O2 -emit-llvm -o - %s | FileCheck %s
 
 #pragma clang default_addr_space(ptr32)
+#pragma clang storage_addr_space(ptr32)
 
 int x;
 

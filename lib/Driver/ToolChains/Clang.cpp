@@ -3796,10 +3796,11 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   }
 
   Args.AddLastArg(CmdArgs, options::OPT_mdefault_address_space_EQ);
-  // On Wine32, default to the __ptr32 address space.
-  if (!Args.hasArg(options::OPT_mdefault_address_space_EQ) &&
+  Args.AddLastArg(CmdArgs, options::OPT_mstorage_address_space_EQ);
+  // On Wine32, default to the __ptr32 address space for data.
+  if (!Args.hasArg(options::OPT_mstorage_address_space_EQ) &&
       Triple.getEnvironment() == llvm::Triple::Wine32)
-    CmdArgs.push_back("-mdefault-address-space=ptr32");
+    CmdArgs.push_back("-mstorage-address-space=ptr32");
 
   Args.AddLastArg(CmdArgs, options::OPT_msystem_address_space_EQ);
 

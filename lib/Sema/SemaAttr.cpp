@@ -793,6 +793,15 @@ void Sema::ActOnPragmaDefaultAS(SourceLocation Loc, PragmaMsStackAction Action,
   Context.DefaultAddrSpace = AddrSpaceStack.CurrentValue;
 }
 
+void Sema::ActOnPragmaStorageAS(SourceLocation Loc, PragmaMsStackAction Action,
+                                LangAS AS) {
+  if (Action & PSK_Pop && StgAddrSpaceStack.Stack.empty())
+    Diag(Loc, diag::warn_pragma_pop_failed) << "clang storage_addr_space"
+                                            << "stack empty";
+  StgAddrSpaceStack.Act(Loc, Action, StringRef(), AS);
+  Context.StorageAddrSpace = StgAddrSpaceStack.CurrentValue;
+}
+
 void Sema::ActOnPragmaPtr32ThunkPrefix(SourceLocation PragmaLocation,
                                        StringLiteral *Prefix) {
   CurPtr32ThunkPrefix = Prefix;

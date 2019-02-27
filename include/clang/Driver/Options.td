@@ -1945,6 +1945,7 @@ def masm_EQ : Joined<["-"], "masm=">, Group<m_Group>, Flags<[DriverOption]>;
 def mcmodel_EQ : Joined<["-"], "mcmodel=">, Group<m_Group>;
 def mimplicit_it_EQ : Joined<["-"], "mimplicit-it=">, Group<m_Group>;
 def mdefault_address_space_EQ : Joined<["-"], "mdefault-address-space=">, Group<m_Group>, Flags<[CC1Option]>;
+def mstorage_address_space_EQ : Joined<["-"], "mstorage-address-space=">, Group<m_Group>, Flags<[CC1Option]>;
 def msystem_address_space_EQ : Joined<["-"], "msystem-address-space=">, Group<m_Group>, Flags<[CC1Option]>;
 def mdefault_build_attributes : Joined<["-"], "mdefault-build-attributes">, Group<m_Group>;
 def mno_default_build_attributes : Joined<["-"], "mno-default-build-attributes">, Group<m_Group>;
