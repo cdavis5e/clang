@@ -14,6 +14,8 @@ _Static_assert(_Alignof(void * __ptr64) == 8, "__ptr64 should be aligned to 8 by
 
 _Static_assert(sizeof(system_pointer) == 8, "Pointer from system header should be 8 bytes long!");
 _Static_assert(_Alignof(system_pointer) == 8, "Pointer from system header should be aligned to 8 bytes!");
+_Static_assert(sizeof(system_pointer*) == 8, "Pointer from system header should be 8 bytes long!");
+_Static_assert(_Alignof(system_pointer*) == 8, "Pointer from system header should be aligned to 8 bytes!");
 
 #pragma clang default_addr_space(pop)
 

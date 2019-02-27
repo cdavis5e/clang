@@ -2779,12 +2779,31 @@ QualType ASTContext::getComplexType(QualType T) const {
   return QualType(New, 0);
 }
 
+static bool isTypeDefinedInSystemHeader(const ASTContext &Ctx, QualType T) {
+  if (auto *TypedefTy = T->getAs<TypedefType>()) {
+    SourceLocation Loc = TypedefTy->getDecl()->getLocation();
+    if (Loc.isValid())
+      return Ctx.getSourceManager().isInSystemHeader(Loc);
+  } else if (auto *TagTy = T->getAs<TagType>()) {
+    SourceLocation Loc = TagTy->getDecl()->getLocation();
+    if (Loc.isValid())
+      return Ctx.getSourceManager().isInSystemHeader(Loc);
+  }
+  return false;
+}
+
 /// getPointerType - Return the uniqued reference to the type for a pointer to
 /// the specified type.
 QualType ASTContext::getPointerType(QualType T, bool HonorASPragma) const {
-  if (HonorASPragma && DefaultAddrSpace != LangAS::Default &&
-      !T.getQualifiers().hasAddressSpace())
-    T = getAddrSpaceQualType(T, DefaultAddrSpace);
+  if (HonorASPragma && !T.getQualifiers().hasAddressSpace()) {
+    if (!isTypeDefinedInSystemHeader(*this, T) &&
+        DefaultAddrSpace != LangAS::Default)
+      T = getAddrSpaceQualType(T, DefaultAddrSpace);
+    else if (isTypeDefinedInSystemHeader(*this, T) &&
+           getTargetInfo().getTargetOpts().SystemAddrSpace != LangAS::Default)
+      T = getAddrSpaceQualType(T,
+                               getTargetInfo().getTargetOpts().SystemAddrSpace);
+  }
 
   // Unique pointers, to guarantee there is only one pointer of a particular
   // structure.
@@ -2910,9 +2929,15 @@ ASTContext::getLValueReferenceType(QualType T, bool SpelledAsLValue,
   assert(getCanonicalType(T) != OverloadTy &&
          "Unresolved overloaded function type");
 
-  if (HonorASPragma && DefaultAddrSpace != LangAS::Default &&
-      !T.getQualifiers().hasAddressSpace())
-    T = getAddrSpaceQualType(T, DefaultAddrSpace);
+  if (HonorASPragma && !T.getQualifiers().hasAddressSpace()) {
+    if (!isTypeDefinedInSystemHeader(*this, T) &&
+        DefaultAddrSpace != LangAS::Default)
+      T = getAddrSpaceQualType(T, DefaultAddrSpace);
+    else if (isTypeDefinedInSystemHeader(*this, T) &&
+           getTargetInfo().getTargetOpts().SystemAddrSpace != LangAS::Default)
+      T = getAddrSpaceQualType(T,
+                               getTargetInfo().getTargetOpts().SystemAddrSpace);
+  }
 
   // Unique pointers, to guarantee there is only one pointer of a particular
   // structure.
@@ -2952,9 +2977,15 @@ ASTContext::getLValueReferenceType(QualType T, bool SpelledAsLValue,
 /// rvalue reference to the specified type.
 QualType ASTContext::getRValueReferenceType(QualType T,
                                             bool HonorASPragma) const {
-  if (HonorASPragma && DefaultAddrSpace != LangAS::Default &&
-      !T.getQualifiers().hasAddressSpace())
-    T = getAddrSpaceQualType(T, DefaultAddrSpace);
+  if (HonorASPragma && !T.getQualifiers().hasAddressSpace()) {
+    if (!isTypeDefinedInSystemHeader(*this, T) &&
+        DefaultAddrSpace != LangAS::Default)
+      T = getAddrSpaceQualType(T, DefaultAddrSpace);
+    else if (isTypeDefinedInSystemHeader(*this, T) &&
+           getTargetInfo().getTargetOpts().SystemAddrSpace != LangAS::Default)
+      T = getAddrSpaceQualType(T,
+                               getTargetInfo().getTargetOpts().SystemAddrSpace);
+  }
 
   // Unique pointers, to guarantee there is only one pointer of a particular
   // structure.
