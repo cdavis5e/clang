@@ -3922,6 +3922,11 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
       }
     }
     if (IRFunctionArgs.hasSRetArg()) {
+      if (SRetPtr.getPointer()->getType()->getPointerAddressSpace() !=
+         IRFuncTy->getParamType(IRFunctionArgs.getSRetArgNo())
+             ->getPointerAddressSpace())
+        SRetPtr = Builder.CreateAddrSpaceCast(
+            SRetPtr, IRFuncTy->getParamType(IRFunctionArgs.getSRetArgNo()));
       IRCallArgs[IRFunctionArgs.getSRetArgNo()] = SRetPtr.getPointer();
     } else if (RetAI.isInAlloca()) {
       Address Addr = createInAllocaStructGEP(RetAI.getInAllocaFieldIndex());
