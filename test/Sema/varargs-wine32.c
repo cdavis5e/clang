@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -verify %s -triple x86_64-apple-darwin9-wine32
+// RUN: %clang_cc1 -fsyntax-only -verify %s -m64-32-interop -triple x86_64-apple-darwin9-wine32
 
 // rdar://6726818
 void f1() {
@@ -152,3 +152,14 @@ void __attribute__((cdecl32)) h10(int a, ...) {
   __builtin_ms_va_start(mp, a); // expected-error {{'__builtin_ms_va_start' used in 32-bit ABI function}}
 }
 
+void i1(__builtin_va_list ap) {
+  (void)__builtin_va_arg(ap, int);  // no-warning
+}
+
+void i2(__builtin_ms_va_list ap) {
+  (void)__builtin_va_arg(ap, int);  // no-warning
+}
+
+void i3(__builtin_va_list32 ap) {
+  (void)__builtin_va_arg(ap, int);  // no-warning
+}

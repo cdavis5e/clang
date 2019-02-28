@@ -13651,11 +13651,24 @@ ExprResult Sema::BuildVAArgExpr(SourceLocation BuiltinLoc,
   }
 
   if (!IsMS && !Is32 && !E->isTypeDependent() &&
-      !Context.hasSameType(VaListType, E->getType()))
-    return ExprError(
-        Diag(E->getBeginLoc(),
-             diag::err_first_argument_to_va_arg_not_of_type_va_list)
-        << OrigExpr->getType() << E->getSourceRange());
+      !Context.hasSameType(VaListType, E->getType())) {
+    // Also allow struct __va_list_tag * __ptr64 on Wine32, or otherwise
+    // we won't be able to pass va_lists around to functions.
+    // XXX This is a dumb kludge.
+    if (!Context.getTargetInfo().hasBuiltinVaList32())
+      return ExprError(
+          Diag(E->getBeginLoc(),
+               diag::err_first_argument_to_va_arg_not_of_type_va_list)
+          << OrigExpr->getType() << E->getSourceRange());
+    VaListType = Context.getBuiltinVaListType();
+    if (VaListType->isArrayType())
+      VaListType = Context.getArrayDecayedType(VaListType);
+    if (!Context.hasSameType(VaListType, E->getType()))
+      return ExprError(
+          Diag(E->getBeginLoc(),
+               diag::err_first_argument_to_va_arg_not_of_type_va_list)
+          << OrigExpr->getType() << E->getSourceRange());
+  }
 
   if (!TInfo->getType()->isDependentType()) {
     if (RequireCompleteType(TInfo->getTypeLoc().getBeginLoc(), TInfo->getType(),
