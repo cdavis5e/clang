@@ -3231,6 +3231,15 @@ Address CodeGenFunction::EmitArrayToPointerDecay(const Expr *E,
   llvm::Type *NewTy = ConvertType(E->getType());
   Addr = Builder.CreateElementBitCast(Addr, NewTy);
 
+  // If the array is a temporary from a GNU compound literal, and the stack
+  // address space is different from the global address space, then the temp
+  // will be in the wrong AS. We have to emit an addrspacecast in that case.
+  unsigned TargetAS =
+      CGM.getContext().getTargetAddressSpace(E->getType().getAddressSpace());
+  if (TargetAS != Addr.getType()->getAddressSpace())
+    Addr = Builder.CreateAddrSpaceCast(Addr, NewTy->getPointerTo(TargetAS),
+                                       "arraydecay.as");
+
   // Note that VLA pointers are always decayed, so we don't need to do
   // anything here.
   if (!E->getType()->isVariableArrayType()) {
