@@ -163,3 +163,19 @@ void i2(__builtin_ms_va_list ap) {
 void i3(__builtin_va_list32 ap) {
   (void)__builtin_va_arg(ap, int);  // no-warning
 }
+
+struct foo {
+  __builtin_ms_va_list list;
+};
+
+void i4(struct foo *f) {
+  (void)__builtin_va_arg(f->list, int);  // no-warning
+}
+
+struct bar {
+  __builtin_va_list32 list;
+};
+
+void i5(struct bar *b) {
+  (void)__builtin_va_arg(b->list, int);  // no-warning
+}

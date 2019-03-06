@@ -13591,10 +13591,8 @@ ExprResult Sema::BuildVAArgExpr(SourceLocation BuiltinLoc,
   // It might be a __builtin_va_list32. This is always and everywhere
   // semantically distinct from both __builtin_va_list and __builtin_ms_va_list.
   if (!E->isTypeDependent() && Context.getTargetInfo().hasBuiltinVaList32()) {
-    QualType VaList32Type = Context.getAddrSpaceQualType(
-        Context.getBuiltinVaList32Type(),
-        Context.getTargetInfo().getStackAddressSpace(getLangOpts()));
-    if (Context.hasSameType(VaList32Type, E->getType())) {
+    QualType VaList32Type = Context.getBuiltinVaList32Type();
+    if (Context.hasSameUnqualifiedType(VaList32Type, E->getType())) {
       if (CheckForModifiableLvalue(E, BuiltinLoc, *this))
         return ExprError();
       Is32 = true;
@@ -13607,10 +13605,8 @@ ExprResult Sema::BuildVAArgExpr(SourceLocation BuiltinLoc,
       Context.getTargetInfo().hasBuiltinMSVaList() &&
       Context.getTargetInfo().getBuiltinVaListKind() !=
           TargetInfo::CharPtrBuiltinVaList) {
-    QualType MSVaListType = Context.getAddrSpaceQualType(
-        Context.getBuiltinMSVaListType(),
-        Context.getTargetInfo().getStackAddressSpace(getLangOpts()));
-    if (Context.hasSameType(MSVaListType, E->getType())) {
+    QualType MSVaListType = Context.getBuiltinMSVaListType();
+    if (Context.hasSameUnqualifiedType(MSVaListType, E->getType())) {
       if (CheckForModifiableLvalue(E, BuiltinLoc, *this))
         return ExprError();
       IsMS = true;
