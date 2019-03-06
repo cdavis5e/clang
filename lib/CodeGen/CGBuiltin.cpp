@@ -2042,6 +2042,11 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
     EmitNonNullArgCheck(RValue::get(Src.getPointer()), E->getArg(1)->getType(),
                         E->getArg(1)->getExprLoc(), FD, 1);
     Builder.CreateMemCpy(Dest, Src, SizeVal, false);
+    if (Dest.getPointer()->getType()->getPointerAddressSpace() != 0)
+      // Cast it to the correct AS.
+      Dest = Builder.CreateAddrSpaceCast(
+          Dest,
+         Dest.getPointer()->getType()->getPointerElementType()->getPointerTo());
     return RValue::get(Dest.getPointer());
   }
 
@@ -2061,6 +2066,11 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
     Address Src = EmitPointerWithAlignment(E->getArg(1));
     Value *SizeVal = llvm::ConstantInt::get(Builder.getContext(), Size);
     Builder.CreateMemCpy(Dest, Src, SizeVal, false);
+    if (Dest.getPointer()->getType()->getPointerAddressSpace() != 0)
+      // Cast it to the correct AS.
+      Dest = Builder.CreateAddrSpaceCast(
+          Dest,
+         Dest.getPointer()->getType()->getPointerElementType()->getPointerTo());
     return RValue::get(Dest.getPointer());
   }
 
@@ -2085,6 +2095,11 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
     Address Src = EmitPointerWithAlignment(E->getArg(1));
     Value *SizeVal = llvm::ConstantInt::get(Builder.getContext(), Size);
     Builder.CreateMemMove(Dest, Src, SizeVal, false);
+    if (Dest.getPointer()->getType()->getPointerAddressSpace() != 0)
+      // Cast it to the correct AS.
+      Dest = Builder.CreateAddrSpaceCast(
+          Dest,
+         Dest.getPointer()->getType()->getPointerElementType()->getPointerTo());
     return RValue::get(Dest.getPointer());
   }
 
@@ -2098,6 +2113,11 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
     EmitNonNullArgCheck(RValue::get(Src.getPointer()), E->getArg(1)->getType(),
                         E->getArg(1)->getExprLoc(), FD, 1);
     Builder.CreateMemMove(Dest, Src, SizeVal, false);
+    if (Dest.getPointer()->getType()->getPointerAddressSpace() != 0)
+      // Cast it to the correct AS.
+      Dest = Builder.CreateAddrSpaceCast(
+          Dest,
+         Dest.getPointer()->getType()->getPointerElementType()->getPointerTo());
     return RValue::get(Dest.getPointer());
   }
   case Builtin::BImemset:
@@ -2109,6 +2129,11 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
     EmitNonNullArgCheck(RValue::get(Dest.getPointer()), E->getArg(0)->getType(),
                         E->getArg(0)->getExprLoc(), FD, 0);
     Builder.CreateMemSet(Dest, ByteVal, SizeVal, false);
+    if (Dest.getPointer()->getType()->getPointerAddressSpace() != 0)
+      // Cast it to the correct AS.
+      Dest = Builder.CreateAddrSpaceCast(
+          Dest,
+         Dest.getPointer()->getType()->getPointerElementType()->getPointerTo());
     return RValue::get(Dest.getPointer());
   }
   case Builtin::BI__builtin___memset_chk: {
@@ -2124,6 +2149,11 @@ RValue CodeGenFunction::EmitBuiltinExpr(const FunctionDecl *FD,
                                          Builder.getInt8Ty());
     Value *SizeVal = llvm::ConstantInt::get(Builder.getContext(), Size);
     Builder.CreateMemSet(Dest, ByteVal, SizeVal, false);
+    if (Dest.getPointer()->getType()->getPointerAddressSpace() != 0)
+      // Cast it to the correct AS.
+      Dest = Builder.CreateAddrSpaceCast(
+          Dest,
+         Dest.getPointer()->getType()->getPointerElementType()->getPointerTo());
     return RValue::get(Dest.getPointer());
   }
   case Builtin::BI__builtin_wmemcmp: {
