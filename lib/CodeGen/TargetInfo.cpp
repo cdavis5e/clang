@@ -924,6 +924,13 @@ static llvm::Type* X86AdjustInlineAsmType(CodeGen::CodeGenFunction &CGF,
     return llvm::Type::getX86_MMXTy(CGF.getLLVMContext());
   }
 
+  if (Constraint.endswith("m") && Ty->isPointerTy()) {
+    // If we have a 32-bit pointer, expand it to a 64-bit one.
+    if (Ty->getPointerAddressSpace() == 32) {
+      return Ty->getPointerElementType()->getPointerTo();
+    }
+  }
+
   // No operation needed
   return Ty;
 }

@@ -1987,8 +1987,16 @@ void CodeGenFunction::EmitAsmStmt(const AsmStmt &S) {
         LargestVectorWidth = std::max(LargestVectorWidth,
                                       VT->getPrimitiveSizeInBits());
     } else {
-      ArgTypes.push_back(Dest.getAddress().getType());
-      Args.push_back(Dest.getPointer());
+      if (llvm::Type* AdjTy = getTargetHooks().adjustInlineAsmType(
+              *this, OutputConstraint, Dest.getAddress().getType())) {
+        llvm::Value *Arg = Builder.CreateAddrSpaceCast(
+            Dest.getPointer(), AdjTy);
+        ArgTypes.push_back(AdjTy);
+        Args.push_back(Arg);
+      } else {
+        ArgTypes.push_back(Dest.getAddress().getType());
+        Args.push_back(Dest.getPointer());
+      }
       Constraints += "=*";
       Constraints += OutputConstraint;
       ReadOnly = ReadNone = false;
@@ -2004,8 +2012,16 @@ void CodeGenFunction::EmitAsmStmt(const AsmStmt &S) {
 
       if (llvm::Type* AdjTy =
           getTargetHooks().adjustInlineAsmType(*this, OutputConstraint,
-                                               Arg->getType()))
+                                               Arg->getType())) {
+        if (AdjTy->isPointerTy() &&
+            AdjTy->getPointerAddressSpace() !=
+                Arg->getType()->getPointerAddressSpace())
+          Arg = Builder.CreateAddrSpaceCast(
+              Arg,
+              Arg->getType()->getPointerElementType()->getPointerTo(
+                  AdjTy->getPointerAddressSpace()));
         Arg = Builder.CreateBitCast(Arg, AdjTy);
+      }
 
       // Update largest vector width for any vector types.
       if (auto *VT = dyn_cast<llvm::VectorType>(Arg->getType()))
@@ -2085,9 +2101,16 @@ void CodeGenFunction::EmitAsmStmt(const AsmStmt &S) {
     }
     if (llvm::Type* AdjTy =
               getTargetHooks().adjustInlineAsmType(*this, InputConstraint,
-                                                   Arg->getType()))
+                                                   Arg->getType())) {
+      if (AdjTy->isPointerTy() &&
+          AdjTy->getPointerAddressSpace() !=
+              Arg->getType()->getPointerAddressSpace())
+        Arg = Builder.CreateAddrSpaceCast(
+            Arg,
+            Arg->getType()->getPointerElementType()->getPointerTo(
+                AdjTy->getPointerAddressSpace()));
       Arg = Builder.CreateBitCast(Arg, AdjTy);
-    else
+    } else
       CGM.getDiags().Report(S.getAsmLoc(), diag::err_asm_invalid_type_in_input)
           << InputExpr->getType() << InputConstraint;
 
