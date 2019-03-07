@@ -2043,6 +2043,9 @@ CGObjCMac::GenerateMessageSendSuper(CodeGen::CodeGenFunction &CGF,
   Target = CGF.Builder.CreateBitCast(Target, ClassTy);
   CGF.Builder.CreateStore(Target,
           CGF.Builder.CreateStructGEP(ObjCSuper, 1, CGF.getPointerSize()));
+  if (ObjCSuper.getType()->getPointerAddressSpace() != 0)
+    ObjCSuper = CGF.Builder.CreateAddrSpaceCast(
+        ObjCSuper,ObjCSuper.getType()->getPointerElementType()->getPointerTo());
   return EmitMessageSend(CGF, Return, ResultType,
                          EmitSelector(CGF, Sel),
                          ObjCSuper.getPointer(), ObjCTypes.SuperPtrCTy,
@@ -7345,6 +7348,9 @@ CGObjCNonFragileABIMac::GenerateMessageSendSuper(CodeGen::CodeGenFunction &CGF,
   CGF.Builder.CreateStore(
       Target, CGF.Builder.CreateStructGEP(ObjCSuper, 1, CGF.getPointerSize()));
 
+  if (ObjCSuper.getType()->getPointerAddressSpace() != 0)
+    ObjCSuper = CGF.Builder.CreateAddrSpaceCast(
+        ObjCSuper,ObjCSuper.getType()->getPointerElementType()->getPointerTo());
   return (isVTableDispatchedSelector(Sel))
     ? EmitVTableMessageSend(CGF, Return, ResultType, Sel,
                             ObjCSuper.getPointer(), ObjCTypes.SuperPtrCTy,
