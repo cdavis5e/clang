@@ -932,8 +932,11 @@ CodeGenFunction::generateObjCGetterBody(const ObjCImplementationDecl *classImpl,
     if (ivarSize > retTySize) {
       llvm::Type *newTy = llvm::Type::getIntNTy(getLLVMContext(), retTySize);
       ivarVal = Builder.CreateTrunc(load, newTy);
-      bitcastType = newTy->getPointerTo();
-    }
+      bitcastType = newTy->getPointerTo(
+          ReturnValue.getType()->getPointerAddressSpace());
+    } else
+      bitcastType = bitcastType->getPointerElementType()->getPointerTo(
+          ReturnValue.getType()->getPointerAddressSpace());
     Builder.CreateStore(ivarVal,
                         Builder.CreateBitCast(ReturnValue, bitcastType));
 
