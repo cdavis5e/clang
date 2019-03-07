@@ -1537,7 +1537,11 @@ void CodeGenFunction::EmitObjCForCollectionStmt(const ObjCForCollectionStmt &S){
   CallArgList Args;
 
   // The first argument is a temporary of the enumeration-state type.
-  Args.add(RValue::get(StatePtr.getPointer()),
+  Address StatePtr64 = StatePtr;
+  if (StatePtr64.getType()->getPointerAddressSpace() != 0)
+    StatePtr64 = Builder.CreateAddrSpaceCast(
+      StatePtr64,StatePtr64.getType()->getPointerElementType()->getPointerTo());
+  Args.add(RValue::get(StatePtr64.getPointer()),
            getContext().getPointerType(StateTy));
 
   // The second argument is a temporary array with space for NumItems
@@ -1545,6 +1549,9 @@ void CodeGenFunction::EmitObjCForCollectionStmt(const ObjCForCollectionStmt &S){
   // pointer written into the control state; this buffer is so that
   // collections that *aren't* backed by arrays can still queue up
   // batches of elements.
+  if (ItemsPtr.getType()->getPointerAddressSpace() != 0)
+    ItemsPtr = Builder.CreateAddrSpaceCast(
+        ItemsPtr, ItemsPtr.getType()->getPointerElementType()->getPointerTo());
   Args.add(RValue::get(ItemsPtr.getPointer()),
            getContext().getPointerType(ItemsTy));
 
