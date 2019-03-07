@@ -1089,8 +1089,14 @@ llvm::Value *CodeGenFunction::EmitBlockLiteral(const CGBlockInfo &blockInfo) {
       llvm::Value *byrefPointer;
       if (CI.isNested())
         byrefPointer = Builder.CreateLoad(src, "byref.capture");
-      else
-        byrefPointer = Builder.CreateBitCast(src.getPointer(), VoidPtrTy);
+      else {
+        byrefPointer = src.getPointer();
+        if (byrefPointer->getType()->getPointerAddressSpace() != 0)
+          byrefPointer = Builder.CreateAddrSpaceCast(
+              byrefPointer,
+              byrefPointer->getType()->getPointerElementType()->getPointerTo());
+        byrefPointer = Builder.CreateBitCast(byrefPointer, VoidPtrTy);
+      }
 
       // Write that void* into the capture field.
       Builder.CreateStore(byrefPointer, blockField);
@@ -2823,9 +2829,8 @@ void CodeGenFunction::emitByrefStructureInit(const AutoVarEmission &emission) {
   Address addr = emission.Addr;
 
   // That's an alloca of the byref structure type.
-  llvm::StructType *byrefType = cast<llvm::StructType>(
-    cast<llvm::PointerType>(addr.getPointer()->getType())->getElementType());
-
+  auto *byrefType = cast<llvm::StructType>(
+      addr.getType()->getPointerElementType());
   unsigned nextHeaderIndex = 0;
   CharUnits nextHeaderOffset;
   auto storeHeaderField = [&](llvm::Value *value, CharUnits fieldSize,
@@ -2859,7 +2864,11 @@ void CodeGenFunction::emitByrefStructureInit(const AutoVarEmission &emission) {
   storeHeaderField(V, getPointerSize(), "byref.isa");
 
   // Store the address of the variable into its own forwarding pointer.
-  storeHeaderField(addr.getPointer(), getPointerSize(), "byref.forwarding");
+  Address addr64 = addr;
+  if (addr64.getType()->getPointerAddressSpace() != 0)
+    addr64 = Builder.CreateAddrSpaceCast(
+        addr64, addr64.getType()->getPointerElementType()->getPointerTo());
+  storeHeaderField(addr64.getPointer(), getPointerSize(), "byref.forwarding");
 
   // Blocks ABI:
   //   c) the flags field is set to either 0 if no helper functions are
@@ -2929,7 +2938,8 @@ void CodeGenFunction::BuildBlockRelease(llvm::Value *V, BlockFieldFlags flags,
                                         bool CanThrow) {
   llvm::Value *F = CGM.getBlockObjectDispose();
   llvm::Value *args[] = {
-    Builder.CreateBitCast(V, Int8PtrTy),
+    Builder.CreateBitCast(Builder.CreateAddrSpaceCast(
+        V, V->getType()->getPointerElementType()->getPointerTo()), Int8PtrTy),
     llvm::ConstantInt::get(Int32Ty, flags.getBitMask())
   };
 
