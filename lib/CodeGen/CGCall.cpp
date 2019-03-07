@@ -3922,12 +3922,13 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
       }
     }
     if (IRFunctionArgs.hasSRetArg()) {
-      if (SRetPtr.getPointer()->getType()->getPointerAddressSpace() !=
+      Address SRetPtr64 = SRetPtr;
+      if (SRetPtr64.getType()->getPointerAddressSpace() !=
          IRFuncTy->getParamType(IRFunctionArgs.getSRetArgNo())
              ->getPointerAddressSpace())
-        SRetPtr = Builder.CreateAddrSpaceCast(
-            SRetPtr, IRFuncTy->getParamType(IRFunctionArgs.getSRetArgNo()));
-      IRCallArgs[IRFunctionArgs.getSRetArgNo()] = SRetPtr.getPointer();
+        SRetPtr64 = Builder.CreateAddrSpaceCast(
+            SRetPtr64, IRFuncTy->getParamType(IRFunctionArgs.getSRetArgNo()));
+      IRCallArgs[IRFunctionArgs.getSRetArgNo()] = SRetPtr64.getPointer();
     } else if (RetAI.isInAlloca()) {
       Address Addr = createInAllocaStructGEP(RetAI.getInAllocaFieldIndex());
       Builder.CreateStore(SRetPtr.getPointer(), Addr);
