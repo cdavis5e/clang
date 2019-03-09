@@ -2383,8 +2383,8 @@ void CodeGenFunction::EmitFunctionProlog(const CGFunctionInfo &FI,
           // copy.
           CharUnits Size = getContext().getTypeSizeInChars(Ty);
           auto SizeVal = llvm::ConstantInt::get(IntPtrTy, Size.getQuantity());
-          Address Dst = Builder.CreateBitCast(AlignedTemp, Int8PtrTy);
-          Address Src = Builder.CreateBitCast(ParamAddr, Int8PtrTy);
+          Address Dst = Builder.CreateBitCast(AlignedTemp, AllocaInt8PtrTy);
+          Address Src = Builder.CreateBitCast(ParamAddr, AllocaInt8PtrTy);
           Builder.CreateMemCpy(Dst, Src, SizeVal, false);
           V = AlignedTemp;
         }
